@@ -16,7 +16,17 @@ st.set_page_config(page_title="노인일자리 관리시스템", layout="centere
 # 구글 시트 연결 함수
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(JSON_KEY, scope)
+    
+    # Secrets에서 정보를 가져옵니다.
+    # 만약 배포 상태라면 secrets를 쓰고, 로컬(내컴퓨터)라면 key.json을 쓰도록 만드는 안전한 코드입니다.
+    if "gcp_service_account" in st.secrets:
+        import json
+        key_dict = json.loads(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_dict(key_dict, scope)
+    else:
+        # 내 컴퓨터에서 테스트할 때용
+        creds = ServiceAccountCredentials.from_json_keyfile_name(JSON_KEY, scope)
+        
     return gspread.authorize(creds)
 
 st.title("👵 노인일자리 출퇴근 시스템")
@@ -105,4 +115,5 @@ except Exception as e:
     st.info("💡 구글 시트에 '승인여부' 열이 있는지, 명단에 데이터가 있는지 확인해주세요.")
 
 st.divider()
+
 st.caption("관리자가 시트에서 '승인'을 입력하면 어르신 화면에 즉시 반영됩니다.")
