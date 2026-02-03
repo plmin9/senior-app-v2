@@ -16,21 +16,23 @@ st.set_page_config(page_title="노인일자리 관리시스템", layout="centere
 # [보안 및 에러 방지용 인증 함수]
 def get_gspread_client():
     try:
+        # 1. 'gcp_service_account'라는 이름표가 금고에 있는지 확인
         if "gcp_service_account" in st.secrets:
             import json
-            # 1단계에서 만든 'json_data' 덩어리를 가져옵니다.
+            # 2. 그 안의 'json_data'라는 항목을 텍스트로 가져옴
             raw_json = st.secrets["gcp_service_account"]["json_data"]
             
-            # 텍스트 덩어리를 실제 데이터(딕셔너리)로 변환
+            # 3. 텍스트를 데이터(딕셔너리)로 변환
             key_info = json.loads(raw_json, strict=False)
             
-            # 혹시 모를 줄바꿈 깨짐 현상 최종 방어
             if "private_key" in key_info:
                 key_info["private_key"] = key_info["private_key"].replace("\\n", "\n")
                 
             return gspread.service_account_from_dict(key_info)
         else:
-            return gspread.service_account(filename=JSON_KEY)
+            # 이 메시지가 뜬다면 이름표 설정 자체가 안 된 것입니다.
+            st.error("금고에 'gcp_service_account' 설정이 없습니다.")
+            return None
     except Exception as e:
         st.error(f"⚠️ 인증 처리 중 상세 오류: {e}")
         return None
@@ -118,6 +120,7 @@ try:
 
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
+
 
 
 
