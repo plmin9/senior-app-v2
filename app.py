@@ -1,25 +1,22 @@
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
-import base64
 
 st.title("👵 노인일자리 출퇴근 시스템")
 
 try:
     s = st.secrets["connections"]
     
-    # 1. 쪼개진 키를 하나로 합치고, 모든 공백/줄바꿈 강제 제거
-    combined_key = s["k1"] + s["k2"] + s["k3"]
-    clean_b64 = "".join(combined_key.split()) # 모든 공백 제거
-    
-    # 2. Base64 해독
-    decoded_key = base64.b64decode(clean_b64).decode("utf-8")
-    
-    # 3. 인증 정보 구성
+    # [자동 청소 로직] 
+    # 1. 앞뒤 공백 제거 
+    # 2. 줄바꿈(\n) 문자가 텍스트로 섞여있다면 실제 줄바꿈으로 변환
+    raw_key = s["private_key"].strip()
+    clean_key = raw_key.replace("\\n", "\n")
+
     creds_info = {
         "type": "service_account",
         "project_id": "senior-work-486210",
-        "private_key": decoded_key,
+        "private_key": clean_key,
         "client_email": s["email"],
         "token_uri": "https://oauth2.googleapis.com/token",
     }
@@ -31,7 +28,7 @@ try:
     client = gspread.authorize(creds)
     
     doc = client.open_by_url(s["spreadsheet"])
-    st.success(f"✅ [{doc.title}] 연결되었습니다!")
+    st.success(f"🎉 [{doc.title}] 연결 성공!")
     
     sheet = doc.get_worksheet(0)
     st.dataframe(sheet.get_all_records())
