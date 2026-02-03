@@ -8,45 +8,59 @@ from streamlit_js_eval import get_geolocation
 # --- 1. 페이지 설정 ---
 st.set_page_config(page_title="스마트경로당지원 근태관리", layout="wide")
 
-# --- 2. 디자인 CSS (글자 크기 및 굵기 통일) ---
+# --- 2. 디자인 CSS (탭 메뉴 디자인 대폭 강화) ---
 st.markdown("""
     <style>
     .stApp { background-color: #F8F9FA; }
     
-    /* 1. 주요 안내 레이블 스타일 (1.1rem, 굵게) */
+    /* 주요 안내 레이블 스타일 */
     .custom-label {
-        font-size: 1.1rem !important;
-        font-weight: 800 !important; /* 더 굵게 조정 */
-        color: #31333F;
+        font-size: 1.15rem !important;
+        font-weight: 800 !important;
+        color: #1E1E1E;
         margin-bottom: 0.8rem;
-        margin-top: 1rem;
+        margin-top: 1.2rem;
     }
     
-    /* 2. 탭 메뉴(근태관리, 휴가관리) 글자 크기 및 굵기 강조 */
+    /* 탭 메뉴 전체 컨테이너 높이 및 배경 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        background-color: transparent;
+    }
+
+    /* 탭 버튼 개별 디자인 (버튼처럼 보이게) */
     .stTabs [data-baseweb="tab"] {
-        font-size: 1.1rem !important;
-        font-weight: 800 !important; /* 굵게 설정 */
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #FFFFFF;
+        border-radius: 10px 10px 0px 0px;
+        border: 1px solid #E0E0E0;
+        padding: 10px 30px !important;
+        font-size: 1.2rem !important; /* 크기 키움 */
+        font-weight: 800 !important;   /* 굵게 */
+        color: #888888 !important;
+        transition: all 0.3s ease;
     }
-    
-    /* 선택된 탭의 강조 효과 */
+
+    /* 활성화된 탭 디자인 (강조) */
     .stTabs [aria-selected="true"] {
-        color: #1A73E8 !important;
-        border-bottom-color: #1A73E8 !important;
+        background-color: #1A73E8 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #1A73E8 !important;
+        box-shadow: 0 4px 6px rgba(26, 115, 232, 0.2);
     }
 
     .time-card {
-        background: white; padding: 20px; border-radius: 15px;
-        text-align: center; border: 1px solid #EEE; margin-bottom: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        background: white; padding: 25px; border-radius: 20px;
+        text-align: center; border: 1px solid #EEE; margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
-    .time-val { font-size: 32px; font-weight: bold; color: #222; }
+    .time-val { font-size: 34px; font-weight: bold; color: #111; }
     
     .location-box {
-        background: white; padding: 15px; border-radius: 12px;
-        border: 1px solid #E0E0E0; height: 100%;
+        background: white; padding: 15px; border-radius: 15px;
+        border: 1px solid #E0E0E0;
     }
-    .gps-label { font-size: 14px; color: #666; font-weight: bold; margin-bottom: 5px; }
-    .gps-value { font-size: 15px; color: #1A73E8; font-family: monospace; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -91,7 +105,7 @@ def get_chosung(text):
     return CHOSUNG_LIST[char_code // 588] if 0 <= char_code <= 11171 else str(text)[0].upper()
 
 # --- 5. 메인 화면 ---
-st.markdown("## 🏢 스마트경로당지원 근태관리")
+st.markdown("# 🏢 스마트경로당지원 근태관리")
 
 # 초성 선택
 st.markdown('<div class="custom-label">초성 선택</div>', unsafe_allow_html=True)
@@ -103,25 +117,23 @@ names = df_vacation['성함'].tolist() if not df_vacation.empty else []
 filtered = names if cho == "전체" else [n for n in names if get_chosung(n) == cho]
 selected_user = st.selectbox("성함", filtered if filtered else ["데이터 없음"], label_visibility="collapsed")
 
-st.divider()
+st.write("<br>", unsafe_allow_html=True)
 
-# --- 6. 탭 구성 (폰트 크기 및 굵기 적용 완료) ---
+# --- 6. 탭 구성 (버튼 스타일 적용) ---
 tab_attendance, tab_vacation = st.tabs(["🕒 근태관리", "🏖️ 휴가관리"])
 
 with tab_attendance:
     now = datetime.now()
     today_date = now.strftime("%Y-%m-%d")
     
-    # 날짜 시간 문구
     st.markdown(f'<div class="custom-label">📅 {now.strftime("%Y년 %m월 %d일 %H:%M")}</div>', unsafe_allow_html=True)
     
-    # 출퇴근 시간 표시 카드
     st.markdown(f"""
         <div class="time-card">
-            <div style="display:flex; justify-content:center; align-items:center; gap:20px;">
-                <div><div style="color:#888; font-size:12px;">출근 시간</div><div class="time-val">{st.session_state.disp_start}</div></div>
-                <div style="font-size:24px; color:#DDD;">➔</div>
-                <div><div style="color:#888; font-size:12px;">퇴근 시간</div><div class="time-val">{st.session_state.disp_end}</div></div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:25px;">
+                <div><div style="color:#888; font-size:13px; margin-bottom:5px;">출근 시간</div><div class="time-val">{st.session_state.disp_start}</div></div>
+                <div style="font-size:30px; color:#DDD; padding-top:10px;">➔</div>
+                <div><div style="color:#888; font-size:13px; margin-bottom:5px;">퇴근 시간</div><div class="time-val">{st.session_state.disp_end}</div></div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -146,20 +158,19 @@ with tab_attendance:
 
     st.divider()
 
-    # 현재 위치 확인
     st.markdown('<div class="custom-label">📍 현재 위치 확인</div>', unsafe_allow_html=True)
     if loc:
         lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        col_map, col_gps = st.columns([1.5, 1])
+        col_map, col_gps = st.columns([1.6, 1])
         with col_map:
             st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=14, use_container_width=True)
         with col_gps:
             st.markdown(f"""
                 <div class="location-box">
-                    <div class="gps-label">🛰️ 위도 (Latitude)</div><div class="gps-value">{lat:.6f}</div>
-                    <div style="margin-top:10px;" class="gps-label">🛰️ 경도 (Longitude)</div><div class="gps-value">{lon:.6f}</div>
-                    <hr style="margin:10px 0;">
-                    <div style="font-size:12px; color:#28a745;">✔️ 위치 확인 완료</div>
+                    <div style="font-size:13px; color:#666; font-weight:bold;">🛰️ 위도 (Latitude)</div><div style="color:#1A73E8; font-family:monospace; font-size:15px;">{lat:.6f}</div>
+                    <div style="margin-top:15px; font-size:13px; color:#666; font-weight:bold;">🛰️ 경도 (Longitude)</div><div style="color:#1A73E8; font-family:monospace; font-size:15px;">{lon:.6f}</div>
+                    <hr style="margin:15px 0; border:0; border-top:1px solid #EEE;">
+                    <div style="font-size:12px; color:#28a745; text-align:center; font-weight:bold;">✔️ 위치 수신 상태 양호</div>
                 </div>
             """, unsafe_allow_html=True)
     else:
@@ -170,7 +181,7 @@ with tab_vacation:
     if not df_vacation.empty and selected_user in df_vacation['성함'].values:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         v_total, v_used, v_rem = to_num(u.get('총연차', 0)), to_num(u.get('사용연차', 0)), to_num(u.get('잔여연차', 0))
-        st.markdown(f"**잔여 연차: {int(v_rem)}일** / 사용: {int(v_used)}일")
+        st.info(f"💡 {selected_user}님의 잔여 연차는 {int(v_rem)}일입니다.")
         st.progress(min(v_used / v_total, 1.0) if v_total > 0 else 0.0)
     
     if st.button("➕ 휴가 신청하기", use_container_width=True):
@@ -184,4 +195,4 @@ with tab_vacation:
                 st.rerun()
         apply_form()
 
-st.caption("실버 복지 사업단 v3.3")
+st.caption("실버 복지 사업단 v3.4 - 프리미엄 UI 업데이트")
