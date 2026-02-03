@@ -13,7 +13,7 @@ st.markdown("""
     .stApp { background-color: #F0F4F8; } 
     .main-title { font-size: 2.5rem !important; font-weight: 900; color: #1B5E20; text-align: center; margin-bottom: 2rem; }
     
-    /* 단계별 헤더 */
+    /* 단계별 헤더 스타일 */
     .step-header {
         background-color: #FFFFFF; padding: 15px 20px; border-left: 10px solid #00838F;
         border-radius: 12px; font-size: 1.6rem !important; font-weight: 800 !important;
@@ -59,7 +59,7 @@ if client:
     df_vacation = pd.DataFrame(sheet_vacation.get_all_records())
 else: st.stop()
 
-# --- 3. 유틸리티 및 세션 상태 ---
+# --- 3. 유틸리티 함수 ---
 def get_chosung(text):
     CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
     if not text: return ""
@@ -119,8 +119,9 @@ with tab_attendance:
             try:
                 all_records = sheet_attendance.get_all_values()
                 target_row = -1
+                today_str = datetime.now().strftime("%Y-%m-%d")
                 for idx, row in enumerate(all_records):
-                    if row[0] == selected_user and row[1] == datetime.now().strftime("%Y-%m-%d") and row[4] == "출근":
+                    if row[0] == selected_user and row[1] == today_str and row[4] == "출근":
                         target_row = idx + 1
                 if target_row != -1:
                     sheet_attendance.update_cell(target_row, 4, st.session_state.disp_end)
@@ -131,7 +132,6 @@ with tab_attendance:
             st.balloons()
             st.rerun()
 
-    # 지도 표시
     if loc:
         st.markdown('<div class="step-header">📍 내 현재 위치 (지도)</div>', unsafe_allow_html=True)
         st.markdown('<div class="map-container">', unsafe_allow_html=True)
@@ -139,18 +139,25 @@ with tab_attendance:
         st.map(df_map, zoom=16, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 🏖️ 휴가 관리 탭 (데이터 복구 완료) ---
+# --- 🏖️ 내 휴가 확인 탭 (데이터 보정 완료) ---
 with tab_vacation:
     st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
     if not df_vacation.empty and selected_user in df_vacation['성함'].values:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         
-        # 구글 시트 '연차관리' 시트의 컬럼 데이터 연결
-        total = u.get('총연차', 0)
-        used = u.get('사용연차', 0)
-        remain = u.get('잔여연차', 0)
+        # 데이터 안전하게 불러오기 (숫자 변환 처리)
+        try:
+            total = pd.to_numeric(u.get('총연차', 0), errors='coerce')
+            used = pd.to_numeric(u.get('사용연차', 0), errors='coerce')
+            remain = pd.to_numeric(u.get('잔여연차', 0), errors='coerce')
+            
+            # NaN(숫자 아님) 값 방어
+            total = int(total) if pd.notnull(total) else 0
+            used = int(used) if pd.notnull(used) else 0
+            remain = int(remain) if pd.notnull(remain) else 0
+        except:
+            total, used, remain = 0, 0, 0
         
-        # 진행 바 퍼센트 계산
         percent = (remain / total) if total > 0 else 0
 
         st.markdown(f"""
@@ -174,4 +181,4 @@ with tab_vacation:
     else:
         st.warning("⚠️ 성함을 먼저 선택해 주시면 휴가 정보를 불러옵니다.")
 
-st.caption("실버 복지 사업단 v5.1 | 휴가 데이터 연동 완료")
+st.caption("실버 복지 사업단 v5.2 | 휴가 데이터 보정 완료")
