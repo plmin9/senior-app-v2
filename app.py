@@ -108,16 +108,29 @@ st.divider()
 st.subheader("🏖️ 연차 및 근로 정보")
 if not df_vacation.empty and selected_user in df_vacation['성함'].values:
     user_data = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
-    v_total, v_used, v_remain = user_data['총연차'], user_data['사용연차'], user_data['잔여연차']
+    
+    # [수정 포인트] 데이터를 강제로 숫자로 변환하고, 에러 발생 시 0으로 처리합니다.
+    try:
+        v_total = float(user_data['총연차'])
+        v_used = float(user_data['사용연차'])
+        v_remain = float(user_data['잔여연차'])
+    except:
+        v_total, v_used, v_remain = 0.0, 0.0, 0.0
     
     c1, c2, c3 = st.columns(3)
-    with c1: st.markdown(f'<div class="status-box"><span class="stat-label">총 연차</span><br><b>{v_total}일</b></div>', unsafe_allow_html=True)
-    with c2: st.markdown(f'<div class="status-box"><span class="stat-label">사용 연차</span><br><b>{v_used}일</b></div>', unsafe_allow_html=True)
-    with c3: st.markdown(f'<div class="status-box"><span class="stat-label">잔여 연차</span><br><b>{v_remain}일</b></div>', unsafe_allow_html=True)
+    with c1: st.markdown(f'<div class="status-box"><span class="stat-label">총 연차</span><br><b>{int(v_total)}일</b></div>', unsafe_allow_html=True)
+    with c2: st.markdown(f'<div class="status-box"><span class="stat-label">사용 연차</span><br><b>{int(v_used)}일</b></div>', unsafe_allow_html=True)
+    with c3: st.markdown(f'<div class="status-box"><span class="stat-label">잔여 연차</span><br><b>{int(v_remain)}일</b></div>', unsafe_allow_html=True)
     
     st.write("📊 **연차 사용 현황**")
-    st.progress(float(v_used / v_total) if v_total > 0 else 0.0)
-    st.info(f"⏱️ 소정근로시간: {user_data.get('소정근로시간', 0)}시간")
+    
+    # 진행바(Progress Bar) 계산 시 0으로 나누기 방지 및 0~1 사이 값 고정
+    progress_val = 0.0
+    if v_total > 0:
+        progress_val = min(v_used / v_total, 1.0) # 100%를 넘지 않게 설정
+        
+    st.progress(progress_val)
+    st.caption(f"🌴 전체 연차 중 {int(progress_val * 100)}%를 사용하였습니다.")
 
 # 연차 신청 팝업
 if st.button("➕ 연차 신청하기"):
@@ -149,3 +162,4 @@ with col_notice:
     for idx, row in df_notice.iterrows():
         with st.expander(f"{row['날짜']} | {row['제목']}"):
             st.write(row['세부내용'])
+
