@@ -17,12 +17,15 @@ st.set_page_config(page_title="노인일자리 관리시스템", layout="centere
 def get_gspread_client():
     try:
         if "gcp_service_account" in st.secrets:
-            # TOML 방식은 이미 딕셔너리 형태이므로 바로 사용 가능합니다.
+            # Secrets에서 직접 가져오기
             key_info = dict(st.secrets["gcp_service_account"])
             
-            # 줄바꿈 기호(\n)가 문자로 인식되었을 경우를 대비한 강제 변환
+            # [핵심] 비밀키 복원 로직 강화
             if "private_key" in key_info:
-                key_info["private_key"] = key_info["private_key"].replace("\\n", "\n")
+                p_key = key_info["private_key"]
+                # 따옴표나 역슬래시가 겹쳐서 들어오는 경우를 모두 수정
+                p_key = p_key.replace("\\n", "\n").replace("\n", "\n")
+                key_info["private_key"] = p_key
                 
             return gspread.service_account_from_dict(key_info)
         else:
@@ -114,4 +117,5 @@ try:
 
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
+
 
