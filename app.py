@@ -12,17 +12,17 @@ def get_gspread_client():
         if "gcp_service_account" in st.secrets:
             s = st.secrets["gcp_service_account"]
             
-            # [핵심 수리 로직]
-            # Secrets에 엔터(줄바꿈)가 섞여 들어오든, \n 글자가 섞여 들어오든 하나로 통합합니다.
-            p_key = s["private_key"]
-            if "\\n" in p_key:
-                p_key = p_key.replace("\\n", "\n")
+            # 텍스트로 된 \n 을 진짜 줄바꿈 기호로 변환
+            clean_key = s["private_key"].replace("\\n", "\n")
+            
+            # 혹시 중복된 줄바꿈이 생겼을 경우를 대비해 정제
+            clean_key = clean_key.replace("\n\n", "\n")
             
             key_info = {
                 "type": s["type"],
                 "project_id": s["project_id"],
                 "private_key_id": s["private_key_id"],
-                "private_key": p_key,
+                "private_key": clean_key,
                 "client_email": s["client_email"],
                 "client_id": s["client_id"],
                 "auth_uri": s["auth_uri"],
@@ -82,6 +82,7 @@ if client:
         st.error(f"데이터 연결 오류: {e}")
 else:
     st.error("구글 서비스 인증에 실패했습니다. Secrets 설정을 확인하세요.")
+
 
 
 
