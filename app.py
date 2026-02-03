@@ -26,6 +26,8 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
     }
     div.stButton > button:disabled { background-color: #E0E0E0 !important; color: #9E9E9E !important; box-shadow: none !important; }
+    
+    /* 지도 박스 스타일 */
     .map-outline-box { border: 4px solid #004D40; border-radius: 15px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
     </style>
 """, unsafe_allow_html=True)
@@ -67,20 +69,23 @@ if 'disp_start' not in st.session_state: st.session_state.disp_start = "-"
 if 'disp_end' not in st.session_state: st.session_state.disp_end = "-"
 if 'arrived' not in st.session_state: st.session_state.arrived = False
 
-# --- 5. 메인 화면 ---
+# --- 5. 메인 화면 상단 ---
 st.markdown('<div class="main-title">🏢 스마트경로당지원 근태관리</div>', unsafe_allow_html=True)
 
 # 초성 및 성함 선택
-cho = st.radio("초성 선택", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True)
+st.markdown('<div class="custom-label">초성 선택</div>', unsafe_allow_html=True)
+cho = st.radio("초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
+
+st.markdown('<div class="custom-label">본인 성함을 선택하세요</div>', unsafe_allow_html=True)
 all_names = df_vacation['성함'].tolist() if not df_vacation.empty else []
 filtered_names = all_names if cho == "전체" else [n for n in all_names if get_chosung(n) == cho]
-selected_user = st.selectbox("본인 성함을 선택하세요", filtered_names if filtered_names else ["데이터 없음"])
+selected_user = st.selectbox("성함 선택", filtered_names if filtered_names else ["데이터 없음"], label_visibility="collapsed")
 
-# 업무 선택 및 입력 (이제 출근 시 필수가 아님)
-st.markdown('<div class="custom-label">📝 수행 업무 선택 및 상세내용 입력 (퇴근 전까지 입력 가능)</div>', unsafe_allow_html=True)
+# 업무 선택 및 입력
+st.markdown('<div class="custom-label">📝 수행 업무 선택 및 상세내용 입력</div>', unsafe_allow_html=True)
 work_options = ["경로당 청소", "배식 및 주방지원", "시설물 안전점검", "사무 업무 보조", "행사 지원", "기타 활동"]
 selected_works = st.multiselect("업무 선택", work_options, placeholder="업무를 골라주세요")
-work_detail = st.text_input("상세 업무 입력", placeholder="상세 내용을 적어주세요")
+work_detail = st.text_input("상세 업무 입력", placeholder="상세 내용을 직접 적어주세요", label_visibility="collapsed")
 combined_work = f"[{', '.join(selected_works)}] {work_detail}".strip()
 
 st.write("<br>", unsafe_allow_html=True)
@@ -106,18 +111,16 @@ with tab_attendance:
     col1, col2 = st.columns(2)
     
     with col1:
-        # 출근 시: 업무 내용이 비어있어도 즉시 등록
         if st.button("🚀 출근하기", use_container_width=True, disabled=st.session_state.arrived or not loc):
             st.session_state.disp_start = datetime.now().strftime("%H:%M:%S")
             st.session_state.arrived = True
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
             
-            # 초기 등록 시 combined_work가 비어있어도 그대로 등록 (나중에 퇴근 시 업데이트)
+            # 출근 시 업무 내용이 없어도 즉시 등록
             sheet_attendance.append_row([selected_user, today_date, st.session_state.disp_start, "", "출근", combined_work, lat, lon])
             st.rerun()
             
     with col2:
-        # 퇴근 시: 퇴근 시간 기록 + 현재 입력된 업무 내용으로 업데이트
         if st.button("🏠 퇴근하기", use_container_width=True, disabled=not st.session_state.arrived or st.session_state.disp_end != "-"):
             st.session_state.disp_end = datetime.now().strftime("%H:%M:%S")
             try:
@@ -128,11 +131,11 @@ with tab_attendance:
                         target_row = idx + 1
                 
                 if target_row != -1:
-                    # 퇴근 시간(4열), 상태(5열), 그리고 업무내용(6열)을 현재 입력값으로 최종 업데이트
                     sheet_attendance.update_cell(target_row, 4, st.session_state.disp_end)
                     sheet_attendance.update_cell(target_row, 5, "퇴근")
-                    sheet_attendance.update_cell(target_row, 6, combined_work) # 최종 업무내용 반영
-                    st.success("퇴근 시간과 업무 내용이 모두 저장되었습니다!")
+                    # 퇴근 시 현재 적혀있는 업무 내용으로 최종 업데이트
+                    sheet_attendance.update_cell(target_row, 6, combined_work)
+                    st.success("퇴근 확인 및 업무 내용이 저장되었습니다!")
                 else:
                     sheet_attendance.append_row([selected_user, today_date, "", st.session_state.disp_end, "퇴근", combined_work, "", ""])
             except Exception as e:
@@ -141,4 +144,26 @@ with tab_attendance:
             st.rerun()
 
     st.divider()
-    # 지도 영역 생략 (기존 디자인 유지)
+    
+    # --- 7. 지도 및 위도/경도 표시 (복구!) ---
+    st.markdown('<div class="custom-label">📍 현재 위치 확인</div>', unsafe_allow_html=True)
+    if loc:
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+        m1, m2 = st.columns([1.2, 1])
+        with m1:
+            st.markdown('<div class="map-outline-box">', unsafe_allow_html=True)
+            # 현재 위치를 지도에 표시
+            st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=15, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        with m2:
+            st.info(f"**수신 위치 정보**\n\n위도: `{lat:.6f}`\n\n경도: `{lon:.6f}`\n\nGPS 인증이 완료되었습니다.")
+    else:
+        st.warning("📍 브라우저의 위치 권한을 허용해 주세요 (GPS 신호 대기 중...)")
+
+with tab_vacation:
+    st.markdown('<div class="custom-label">🏖️ 나의 휴가 현황</div>', unsafe_allow_html=True)
+    if not df_vacation.empty and selected_user in df_vacation['성함'].values:
+        u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
+        st.success(f"🌟 {selected_user}님, 남은 휴가는 **{u.get('잔여연차', 0)}일**입니다.")
+
+st.caption("실버 복지 사업단 v4.4 | 위치기반 근태관리 통합본")
