@@ -18,21 +18,21 @@ def get_gspread_client():
     try:
         if "gcp_service_account" in st.secrets:
             import json
-            # Secrets에서 json_data 뭉치를 가져옵니다.
             raw_json = st.secrets["gcp_service_account"]["json_data"]
-            
-            # 앞뒤 공백 제거 (매우 중요)
-            raw_json = raw_json.strip()
-            
-            # JSON 형식이 완벽하지 않아도 최대한 읽어보도록 설정 (strict=False)
             key_info = json.loads(raw_json, strict=False)
             
+            # [비장의 무기] private_key 강제 수리 로직
             if "private_key" in key_info:
-                key_info["private_key"] = key_info["private_key"].replace("\\n", "\n")
+                pk = key_info["private_key"]
+                # 1. 실제 줄바꿈이 있다면 \n 문자로 바꿈
+                # 2. 역슬래시가 두 번 써졌다면(\ \n) 하나로 바꿈
+                pk = pk.replace("\n", "\\n").replace("\\\\n", "\\n")
+                # 3. 양 끝에 혹시 모를 따옴표나 공백 제거
+                pk = pk.strip().strip('"').strip("'")
+                # 4. 마지막으로 구글 라이브러리가 인식하는 실제 줄바꿈으로 변환
+                key_info["private_key"] = pk.replace("\\n", "\n")
                 
             return gspread.service_account_from_dict(key_info)
-        else:
-            return None
     except Exception as e:
         st.error(f"⚠️ 인증 처리 중 상세 오류: {e}")
         return None
@@ -120,6 +120,7 @@ try:
 
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
+
 
 
 
