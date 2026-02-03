@@ -16,15 +16,19 @@ st.set_page_config(page_title="노인일자리 관리시스템", layout="centere
 # [보완된 인증 함수]
 def get_gspread_client():
     try:
-        # Streamlit Cloud 환경 (Secrets 사용)
         if "gcp_service_account" in st.secrets:
-            key_info = json.loads(st.secrets["gcp_service_account"], strict=False)
-            return gspread.service_account_from_dict(key_info)
-        # 로컬 환경 (key.json 파일 사용)
+            # strict=False 옵션을 주어 제어문자(줄바꿈 등) 오류를 방지합니다.
+            info = json.loads(st.secrets["gcp_service_account"], strict=False)
+            
+            # private_key의 줄바꿈 문자가 깨졌을 경우를 대비해 다시 한번 정리합니다.
+            if "private_key" in info:
+                info["private_key"] = info["private_key"].replace("\\n", "\n")
+                
+            return gspread.service_account_from_dict(info)
         else:
             return gspread.service_account(filename=JSON_KEY)
     except Exception as e:
-        st.error(f"⚠️ 인증 처리 중 오류가 발생했습니다: {e}")
+        st.error(f"⚠️ 인증 처리 중 상세 오류: {e}")
         return None
 
 # ==========================================
@@ -113,3 +117,4 @@ except Exception as e:
 
 st.divider()
 st.caption("관리자 승인 시 화면에 결과가 반영됩니다.")
+
