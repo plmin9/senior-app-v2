@@ -6,24 +6,37 @@ from datetime import datetime
 from streamlit_js_eval import get_geolocation
 
 # --- 1. 페이지 설정 ---
-st.set_page_config(page_title="스마트 근태관리", layout="wide")
+st.set_page_config(page_title="스마트경로당지원 근태관리", layout="wide")
 
-# --- 2. 디자인 CSS (UI 최적화) ---
+# --- 2. 디자인 CSS (폰트 크기 및 스타일 조정) ---
 st.markdown("""
     <style>
     .stApp { background-color: #F8F9FA; }
+    
+    /* 공통 폰트 설정 (현재 위치 확인 문구와 동일한 느낌) */
+    .custom-label {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #31333F;
+        margin-bottom: 0.5rem;
+    }
+    
     .time-card {
         background: white; padding: 20px; border-radius: 15px;
         text-align: center; border: 1px solid #EEE; margin-bottom: 15px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .time-val { font-size: 32px; font-weight: bold; color: #222; }
+    
     .location-box {
         background: white; padding: 15px; border-radius: 12px;
         border: 1px solid #E0E0E0; height: 100%;
     }
     .gps-label { font-size: 14px; color: #666; font-weight: bold; margin-bottom: 5px; }
     .gps-value { font-size: 15px; color: #1A73E8; font-family: monospace; }
+    
+    /* 탭 폰트 크기 조정 */
+    .stTabs [data-baseweb="tab"] { font-size: 1.1rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -67,24 +80,30 @@ def get_chosung(text):
     char_code = ord(str(text)[0]) - 0xAC00
     return CHOSUNG_LIST[char_code // 588] if 0 <= char_code <= 11171 else str(text)[0].upper()
 
-# --- 5. 메인 화면: 사용자 선택 ---
-st.markdown("## 🏢 스마트 근태관리")
+# --- 5. 메인 화면 ---
+st.markdown("## 🏢 스마트경로당지원 근태관리")
 
-# ㄱ~ㅎ 초성 필터
-cho = st.radio("성씨 초성 선택", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True)
+# 초성 선택 및 이름 선택 문구 크기 조정
+st.markdown('<div class="custom-label">초성 선택</div>', unsafe_allow_html=True)
+cho = st.radio("초성 선택", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
+
+st.markdown('<div class="custom-label">본인 성함을 선택하세요</div>', unsafe_allow_html=True)
 names = df_vacation['성함'].tolist() if not df_vacation.empty else []
 filtered = names if cho == "전체" else [n for n in names if get_chosung(n) == cho]
-selected_user = st.selectbox("본인 성함을 선택하세요", filtered if filtered else ["데이터 없음"])
+selected_user = st.selectbox("성함 선택", filtered if filtered else ["데이터 없음"], label_visibility="collapsed")
 
 st.divider()
 
 # --- 6. 탭 구성 ---
+# 탭 이름은 폰트 크기 조정을 위해 별도 스타일 적용
 tab_attendance, tab_vacation = st.tabs(["🕒 근태관리", "🏖️ 휴가관리"])
 
 with tab_attendance:
     now = datetime.now()
     today_date = now.strftime("%Y-%m-%d")
-    st.write(f"📅 {now.strftime('%Y년 %m월 %d일 %H:%M')}")
+    
+    # 날짜 시간 문구 크기 조정
+    st.markdown(f'<div class="custom-label">📅 {now.strftime("%Y년 %m월 %d일 %H:%M")}</div>', unsafe_allow_html=True)
     
     # 출퇴근 시간 표시 카드
     st.markdown(f"""
@@ -97,7 +116,6 @@ with tab_attendance:
         </div>
     """, unsafe_allow_html=True)
     
-    # 버튼 배치
     loc = get_geolocation()
     col_btn1, col_btn2 = st.columns(2)
     
@@ -106,22 +124,19 @@ with tab_attendance:
             st.session_state.disp_start = datetime.now().strftime("%H:%M:%S")
             st.session_state.arrived = True
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-            # 시트에 출근 기록 추가
             sheet_attendance.append_row([selected_user, today_date, st.session_state.disp_start, "", "출근", "정상출근", lat, lon])
             st.rerun()
 
     with col_btn2:
         if st.button("🏠 퇴근하기", use_container_width=True, disabled=not st.session_state.arrived or st.session_state.disp_end != "-"):
             st.session_state.disp_end = datetime.now().strftime("%H:%M:%S")
-            # 시트에 퇴근 기록 추가 (출근 시간은 비우고 퇴근열에 기록)
             sheet_attendance.append_row([selected_user, today_date, "", st.session_state.disp_end, "퇴근", "정상퇴근", "", ""])
             st.success("퇴근 기록 완료!")
             st.rerun()
 
     st.divider()
 
-    # 위치 정보 및 미니 맵
-    st.markdown("##### 📍 현재 위치 확인")
+    st.markdown('<div class="custom-label">📍 현재 위치 확인</div>', unsafe_allow_html=True)
     if loc:
         lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
         col_map, col_gps = st.columns([1.5, 1])
@@ -137,10 +152,10 @@ with tab_attendance:
                 </div>
             """, unsafe_allow_html=True)
     else:
-        st.info("위치 정보를 수신 중입니다... 브라우저의 위치 권한을 확인해 주세요.")
+        st.info("위치 정보를 수신 중입니다...")
 
 with tab_vacation:
-    st.subheader("🏖️ 나의 휴가 현황")
+    st.markdown('<div class="custom-label">🏖️ 나의 휴가 현황</div>', unsafe_allow_html=True)
     if not df_vacation.empty and selected_user in df_vacation['성함'].values:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         v_total, v_used, v_rem = to_num(u.get('총연차', 0)), to_num(u.get('사용연차', 0)), to_num(u.get('잔여연차', 0))
@@ -158,4 +173,4 @@ with tab_vacation:
                 st.rerun()
         apply_form()
 
-st.caption("실버 복지 사업단 v3.0 - 모든 기능 통합 완료")
+st.caption("실버 복지 사업단 v3.1")
