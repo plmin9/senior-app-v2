@@ -12,29 +12,30 @@ def get_gspread_client():
         if "gcp_service_account" in st.secrets:
             s = st.secrets["gcp_service_account"]
             
-            # 주소의 앞뒤 공백을 강제로 제거하여 네트워크 에러 방지
-            auth_uri = s["auth_uri"].strip()
-            token_uri = s["token_uri"].strip()
+            # [수정된 부분] 비밀키를 가장 안전하게 정제하는 로직
+            raw_key = s["private_key"]
             
-            clean_key = s["private_key"].replace("\\n", "\n").strip()
+            # 1. 텍스트로 된 \\n (역슬래시 두개)를 진짜 줄바꿈으로 변경
+            # 2. 텍스트로 된 \n (역슬래시 한개)를 진짜 줄바꿈으로 변경
+            # 3. 실제 엔터로 쳐진 줄바꿈이 있다면 그것도 유지
+            clean_key = raw_key.replace("\\n", "\n").replace("\n", "\n")
             
             key_info = {
                 "type": s["type"],
                 "project_id": s["project_id"],
                 "private_key_id": s["private_key_id"],
-                "private_key": clean_key,
+                "private_key": clean_key.strip(), # 앞뒤 공백 제거
                 "client_email": s["client_email"],
                 "client_id": s["client_id"],
-                "auth_uri": auth_uri,
-                "token_uri": token_uri,
+                "auth_uri": s["auth_uri"].strip(),
+                "token_uri": s["token_uri"].strip(),
                 "auth_provider_x509_cert_url": s["auth_provider_x509_cert_url"].strip(),
                 "client_x509_cert_url": s["client_x509_cert_url"].strip()
             }
             return gspread.service_account_from_dict(key_info)
         return None
     except Exception as e:
-        # 이 에러가 뜨면 아직 서버 인터넷이 불안정한 상태입니다.
-        st.error(f"⚠️ 인증 서버 연결 지연: {e}")
+        st.error(f"⚠️ 인증 처리 중 상세 오류: {e}")
         return None
         
 st.title("👵 노인일자리 출퇴근 시스템")
@@ -83,6 +84,7 @@ if client:
         st.error(f"데이터 연결 오류: {e}")
 else:
     st.error("구글 서비스 인증에 실패했습니다. Secrets 설정을 확인하세요.")
+
 
 
 
