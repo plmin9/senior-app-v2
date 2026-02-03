@@ -10,14 +10,26 @@ SHEET_ID = "1y5XoW1L_fO7V7jW4eA7P-V7yvXo_U9C-V7yvXo_U9C" # 예시이므로 본�
 def get_gspread_client():
     try:
         if "gcp_service_account" in st.secrets:
-            # Secrets 데이터를 딕셔너리로 복사
-            key_info = dict(st.secrets["gcp_service_account"])
+            s = st.secrets["gcp_service_account"]
             
-            # [수정 포인트] 문자열 '\n'을 실제 줄바꿈 문자로 변환
-            # 이 코드가 있어야 'Invalid JWT Signature' 에러를 막을 수 있습니다.
-            if "private_key" in key_info:
-                key_info["private_key"] = key_info["private_key"].replace("\\n", "\n")
+            # [핵심 수리 로직]
+            # Secrets에 엔터(줄바꿈)가 섞여 들어오든, \n 글자가 섞여 들어오든 하나로 통합합니다.
+            p_key = s["private_key"]
+            if "\\n" in p_key:
+                p_key = p_key.replace("\\n", "\n")
             
+            key_info = {
+                "type": s["type"],
+                "project_id": s["project_id"],
+                "private_key_id": s["private_key_id"],
+                "private_key": p_key,
+                "client_email": s["client_email"],
+                "client_id": s["client_id"],
+                "auth_uri": s["auth_uri"],
+                "token_uri": s["token_uri"],
+                "auth_provider_x509_cert_url": s["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": s["client_x509_cert_url"]
+            }
             return gspread.service_account_from_dict(key_info)
         return None
     except Exception as e:
@@ -70,6 +82,7 @@ if client:
         st.error(f"데이터 연결 오류: {e}")
 else:
     st.error("구글 서비스 인증에 실패했습니다. Secrets 설정을 확인하세요.")
+
 
 
 
