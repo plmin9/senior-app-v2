@@ -16,7 +16,6 @@ st.markdown("""
     
     .stTabs [data-baseweb="tab-list"] { gap: 10px; border-bottom: none !important; }
     .stTabs [data-baseweb="tab"] { flex: 1; height: 55px; font-size: 1.2rem !important; font-weight: 800 !important; border-radius: 12px 12px 0 0; border: none !important; }
-    .stTabs [id^="tabs-b-tab"] { background-color: #E0F2F1 !important; color: #00796B !important; }
     .stTabs [aria-selected="true"] { background-color: #00838F !important; color: white !important; }
     .stTabs [data-baseweb="tab-highlight"] { background-color: #00838F !important; height: 4px !important; }
 
@@ -27,7 +26,7 @@ st.markdown("""
     }
     div.stButton > button:disabled { background-color: #E0E0E0 !important; color: #9E9E9E !important; box-shadow: none !important; }
     
-    /* 지도 박스 스타일 */
+    /* 지도 박스 스타일 (강한 아웃라인) */
     .map-outline-box { border: 4px solid #004D40; border-radius: 15px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
     </style>
 """, unsafe_allow_html=True)
@@ -72,20 +71,17 @@ if 'arrived' not in st.session_state: st.session_state.arrived = False
 # --- 5. 메인 화면 상단 ---
 st.markdown('<div class="main-title">🏢 스마트경로당지원 근태관리</div>', unsafe_allow_html=True)
 
-# 초성 및 성함 선택
-st.markdown('<div class="custom-label">초성 선택</div>', unsafe_allow_html=True)
-cho = st.radio("초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
+cho = st.radio("초성 선택", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True)
 
-st.markdown('<div class="custom-label">본인 성함을 선택하세요</div>', unsafe_allow_html=True)
 all_names = df_vacation['성함'].tolist() if not df_vacation.empty else []
 filtered_names = all_names if cho == "전체" else [n for n in all_names if get_chosung(n) == cho]
-selected_user = st.selectbox("성함 선택", filtered_names if filtered_names else ["데이터 없음"], label_visibility="collapsed")
+selected_user = st.selectbox("본인 성함을 선택하세요", filtered_names if filtered_names else ["데이터 없음"])
 
 # 업무 선택 및 입력
 st.markdown('<div class="custom-label">📝 수행 업무 선택 및 상세내용 입력</div>', unsafe_allow_html=True)
 work_options = ["경로당 청소", "배식 및 주방지원", "시설물 안전점검", "사무 업무 보조", "행사 지원", "기타 활동"]
 selected_works = st.multiselect("업무 선택", work_options, placeholder="업무를 골라주세요")
-work_detail = st.text_input("상세 업무 입력", placeholder="상세 내용을 직접 적어주세요", label_visibility="collapsed")
+work_detail = st.text_input("상세 업무 입력", placeholder="상세 내용을 직접 적어주세요")
 combined_work = f"[{', '.join(selected_works)}] {work_detail}".strip()
 
 st.write("<br>", unsafe_allow_html=True)
@@ -115,8 +111,6 @@ with tab_attendance:
             st.session_state.disp_start = datetime.now().strftime("%H:%M:%S")
             st.session_state.arrived = True
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-            
-            # 출근 시 업무 내용이 없어도 즉시 등록
             sheet_attendance.append_row([selected_user, today_date, st.session_state.disp_start, "", "출근", combined_work, lat, lon])
             st.rerun()
             
@@ -129,13 +123,11 @@ with tab_attendance:
                 for idx, row in enumerate(all_records):
                     if row[0] == selected_user and row[1] == today_date and row[4] == "출근":
                         target_row = idx + 1
-                
                 if target_row != -1:
                     sheet_attendance.update_cell(target_row, 4, st.session_state.disp_end)
                     sheet_attendance.update_cell(target_row, 5, "퇴근")
-                    # 퇴근 시 현재 적혀있는 업무 내용으로 최종 업데이트
                     sheet_attendance.update_cell(target_row, 6, combined_work)
-                    st.success("퇴근 확인 및 업무 내용이 저장되었습니다!")
+                    st.success("퇴근 시간과 업무 내용이 저장되었습니다!")
                 else:
                     sheet_attendance.append_row([selected_user, today_date, "", st.session_state.disp_end, "퇴근", combined_work, "", ""])
             except Exception as e:
@@ -143,22 +135,17 @@ with tab_attendance:
             st.balloons()
             st.rerun()
 
-    st.divider()
-    
-    # --- 7. 지도 및 위도/경도 표시 (복구!) ---
+    # --- 7. 지도 및 위치 정보 (상단 st.divider() 제거됨) ---
     st.markdown('<div class="custom-label">📍 현재 위치 확인</div>', unsafe_allow_html=True)
     if loc:
         lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
         m1, m2 = st.columns([1.2, 1])
         with m1:
             st.markdown('<div class="map-outline-box">', unsafe_allow_html=True)
-            # 현재 위치를 지도에 표시
             st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=15, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
         with m2:
-            st.info(f"**수신 위치 정보**\n\n위도: `{lat:.6f}`\n\n경도: `{lon:.6f}`\n\nGPS 인증이 완료되었습니다.")
-    else:
-        st.warning("📍 브라우저의 위치 권한을 허용해 주세요 (GPS 신호 대기 중...)")
+            st.info(f"**수신 위치 정보**\n\n위도: `{lat:.6f}`\n\n경도: `{lon:.6f}`\n\nGPS 인증 완료")
 
 with tab_vacation:
     st.markdown('<div class="custom-label">🏖️ 나의 휴가 현황</div>', unsafe_allow_html=True)
@@ -166,4 +153,4 @@ with tab_vacation:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         st.success(f"🌟 {selected_user}님, 남은 휴가는 **{u.get('잔여연차', 0)}일**입니다.")
 
-st.caption("실버 복지 사업단 v4.4 | 위치기반 근태관리 통합본")
+st.caption("실버 복지 사업단 v4.5 | UI 최적화 완료")
