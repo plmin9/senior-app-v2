@@ -16,25 +16,15 @@ st.set_page_config(page_title="노인일자리 관리시스템", layout="centere
 # [보안 및 에러 방지용 인증 함수]
 def get_gspread_client():
     try:
-        # Streamlit Cloud 환경 (Secrets 사용)
         if "gcp_service_account" in st.secrets:
-            raw_data = st.secrets["gcp_service_account"]
+            # TOML 방식은 이미 딕셔너리 형태이므로 바로 사용 가능합니다.
+            key_info = dict(st.secrets["gcp_service_account"])
             
-            # 1. 데이터가 문자열(str)인 경우 JSON으로 변환
-            if isinstance(raw_data, str):
-                # 줄바꿈 문자로 인한 PEM 에러 방지 및 엄격한 해석 방지
-                key_info = json.loads(raw_data, strict=False)
-            else:
-                # 2. 이미 딕셔너리 객체인 경우 그대로 사용
-                key_info = raw_data
-                
-            # 비밀키 줄바꿈 깨짐 현상 최종 수정
+            # 줄바꿈 기호(\n)가 문자로 인식되었을 경우를 대비한 강제 변환
             if "private_key" in key_info:
                 key_info["private_key"] = key_info["private_key"].replace("\\n", "\n")
                 
             return gspread.service_account_from_dict(key_info)
-            
-        # 로컬 환경 (key.json 파일 사용)
         else:
             return gspread.service_account(filename=JSON_KEY)
     except Exception as e:
@@ -124,3 +114,4 @@ try:
 
 except Exception as e:
     st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
+
