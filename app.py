@@ -12,27 +12,16 @@ st.markdown("""
     <style>
     .stApp { background-color: #F0F4F8; } 
     .main-title { font-size: 2.5rem !important; font-weight: 900; color: #1B5E20; text-align: center; margin-bottom: 2rem; }
-    
-    /* 안내 문구 스타일 */
     .step-header {
         background-color: #FFFFFF; padding: 15px 20px; border-left: 10px solid #00838F;
         border-radius: 12px; font-size: 1.6rem !important; font-weight: 800 !important;
-        color: #004D40; margin-top: 25px; margin-bottom: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        color: #004D40; margin-top: 25px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
-
-    /* 탭 디자인 */
     .stTabs [data-baseweb="tab-list"] { gap: 20px; padding: 10px; background-color: #CFD8DC; border-radius: 20px; }
     .stTabs [data-baseweb="tab"] { flex: 1; height: 80px; font-size: 1.8rem !important; font-weight: 900 !important; border-radius: 15px !important; background-color: #ECEFF1; color: #455A64; }
     .stTabs [aria-selected="true"] { background-color: #00838F !important; color: white !important; box-shadow: 0 8px 15px rgba(0,131,143,0.3); }
-
-    /* 출퇴근 버튼 */
     div.stButton > button { border-radius: 25px; height: 7rem !important; font-size: 2rem !important; font-weight: 900 !important; }
-    
-    /* 지도 테두리 */
     .map-container { border: 6px solid #004D40; border-radius: 25px; overflow: hidden; }
-    
-    /* 위도경도 텍스트 상자 */
     .loc-info { background-color: #E0F2F1; padding: 20px; border-radius: 20px; border: 2px solid #00838F; height: 100%; }
     </style>
 """, unsafe_allow_html=True)
@@ -77,13 +66,15 @@ if 'arrived' not in st.session_state: st.session_state.arrived = False
 loc = get_geolocation()
 
 # --- 5. 메인 화면 ---
-st.markdown('<div class="main-title"> 스마트경로당지원 근태관리</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">스마트경로당지원 근태관리</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="step-header">👤 성함 찾기 (첫글자 선택)</div>', unsafe_allow_html=True)
 cho = st.radio("초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
 all_names = df_vacation['성함'].tolist() if not df_vacation.empty else []
 filtered_names = all_names if cho == "전체" else [n for n in all_names if get_chosung(n) == cho]
-selected_user = st.selectbox("성함 선택", filtered_names if filtered_names else ["데이터 없음"], label_visibility="collapsed")
+
+# 성함 선택 (기본값을 '선택하세요'로 설정)
+selected_user = st.selectbox("성함 선택", ["성함을 선택해 주세요"] + filtered_names if filtered_names else ["데이터 없음"], label_visibility="collapsed")
 
 st.markdown('<div class="step-header">📝 오늘 하시는 업무</div>', unsafe_allow_html=True)
 work_options = ["경로당 청소", "배식 및 주방지원", "시설물 안전점검", "사무 업무 보조", "행사 지원", "기타 활동"]
@@ -91,15 +82,21 @@ selected_works = st.multiselect("업무 선택", work_options, placeholder="눌�
 work_detail = st.text_input("상세 내용 (직접 쓰기)", placeholder="내용을 직접 입력하실 수 있습니다")
 combined_work = f"[{', '.join(selected_works)}] {work_detail}".strip()
 
+# 💡 이름 선택 여부 확인 (버튼 잠금용 변수)
+is_user_selected = (selected_user != "성함을 선택해 주세요" and selected_user != "데이터 없음")
+
 st.write("<br>", unsafe_allow_html=True)
 
 # --- 6. 탭 구성 ---
 tab_attendance, tab_vacation = st.tabs(["🕒 오늘 출근·퇴근", "🏖️ 내 휴가 확인"])
 
 with tab_attendance:
-    # 시간 표시 현황판
+    # 안내 메시지 (이름을 안 골랐을 때만 표시)
+    if not is_user_selected:
+        st.error("⬆️ 위에서 **성함을 먼저 선택**하셔야 출근 버튼이 나타납니다.")
+
     st.markdown(f"""
-        <div style="background: white; padding: 30px; border-radius: 30px; border: 5px solid #00838F; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
+        <div style="background: white; padding: 30px; border-radius: 30px; border: 5px solid #00838F; text-align: center; margin-bottom: 30px;">
             <div style="display:flex; justify-content:space-around; align-items:center;">
                 <div style="flex:1;"><div style="font-size:1.5rem; color:#555;">☀️ 출근 시각</div><div style="font-size:4rem; font-weight:900; color:#2E7D32;">{st.session_state.disp_start}</div></div>
                 <div style="font-size:4rem; color:#EEE;">|</div>
@@ -110,7 +107,9 @@ with tab_attendance:
     
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("지금 출근하기", use_container_width=True, disabled=st.session_state.arrived or not loc):
+        # 🔒 이름 미선택 시 버튼 비활성화 (disabled 조건 추가)
+        if st.button("지금 출근하기", use_container_width=True, 
+                     disabled=not is_user_selected or st.session_state.arrived or not loc):
             st.session_state.disp_start = datetime.now().strftime("%H:%M:%S")
             st.session_state.arrived = True
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
@@ -118,7 +117,9 @@ with tab_attendance:
             st.rerun()
             
     with col_btn2:
-        if st.button("지금 퇴근하기", use_container_width=True, disabled=not st.session_state.arrived or st.session_state.disp_end != "-"):
+        # 🔒 퇴근 버튼도 이름 선택이 필수
+        if st.button("지금 퇴근하기", use_container_width=True, 
+                     disabled=not is_user_selected or not st.session_state.arrived or st.session_state.disp_end != "-"):
             st.session_state.disp_end = datetime.now().strftime("%H:%M:%S")
             try:
                 all_records = sheet_attendance.get_all_values()
@@ -136,9 +137,9 @@ with tab_attendance:
             st.balloons()
             st.rerun()
 
-    # --- 🗺️ 지도 및 위도경도 복구 섹션 ---
-    st.markdown('<div class="step-header">📍 내 현재 위치 (인증 확인)</div>', unsafe_allow_html=True)
+    # 지도 및 위치 정보
     if loc:
+        st.markdown('<div class="step-header">📍 내 현재 위치 (인증 확인)</div>', unsafe_allow_html=True)
         m_col1, m_col2 = st.columns([2, 1])
         with m_col1:
             st.markdown('<div class="map-container">', unsafe_allow_html=True)
@@ -148,22 +149,18 @@ with tab_attendance:
         with m_col2:
             st.markdown(f"""
                 <div class="loc-info">
-                    <p style="font-size: 1.2rem; font-weight: bold; color: #004D40; margin-bottom: 10px;">🚩 위치 수신 상태: 정상</p>
+                    <p style="font-size: 1.2rem; font-weight: bold; color: #004D40;">🚩 위치 인증 완료</p>
                     <hr style="border: 0.5px solid #00838F;">
-                    <p style="font-size: 1rem; color: #555;">위도(Latitude)</p>
-                    <p style="font-size: 1.6rem; font-weight: 800; color: #00838F;">{loc['coords']['latitude']:.6f}</p>
-                    <p style="font-size: 1rem; color: #555; margin-top: 15px;">경도(Longitude)</p>
-                    <p style="font-size: 1.6rem; font-weight: 800; color: #00838F;">{loc['coords']['longitude']:.6f}</p>
-                    <p style="font-size: 0.9rem; color: #666; margin-top: 20px;">※ 지도의 점이 현재 계신 위치입니다.</p>
+                    <p style="font-size: 1rem; color: #555;">위도(Lat)</p>
+                    <p style="font-size: 1.5rem; font-weight: 800; color: #00838F;">{loc['coords']['latitude']:.6f}</p>
+                    <p style="font-size: 1rem; color: #555; margin-top: 15px;">경도(Lon)</p>
+                    <p style="font-size: 1.5rem; font-weight: 800; color: #00838F;">{loc['coords']['longitude']:.6f}</p>
                 </div>
             """, unsafe_allow_html=True)
-    else:
-        st.warning("📍 위치 신호를 기다리는 중입니다. GPS를 켜고 잠시만 기다려 주세요.")
 
 # --- 🏖️ 내 휴가 확인 탭 ---
 with tab_vacation:
-    st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
-    if not df_vacation.empty and selected_user in df_vacation['성함'].values:
+    if is_user_selected:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         try:
             total = int(pd.to_numeric(u.get('총연차', 0), errors='coerce'))
@@ -175,23 +172,17 @@ with tab_vacation:
         percent = (remain / total) if total > 0 else 0
 
         st.markdown(f"""
-            <div style="background: white; padding: 40px; border-radius: 30px; border: 3px solid #E0E0E0; box-shadow: 0 10px 20px rgba(0,0,0,0.05); text-align: center;">
+            <div style="background: white; padding: 40px; border-radius: 30px; border: 3px solid #E0E0E0; text-align: center;">
                 <div style="font-size: 2.2rem; font-weight: 800; color: #1B5E20; margin-bottom: 30px;">🌟 {selected_user} 어르신 휴가 현황</div>
                 <div style="display: flex; justify-content: space-around; margin-bottom: 40px;">
                     <div><div style="font-size: 1.2rem; color: #666;">전체 휴가</div><div style="font-size: 2.5rem; font-weight: 800; color: #424242;">{total}일</div></div>
-                    <div style="border-left: 2px solid #EEE; height: 60px;"></div>
                     <div><div style="font-size: 1.2rem; color: #666;">사용한 휴가</div><div style="font-size: 2.5rem; font-weight: 800; color: #C62828;">{used}일</div></div>
-                    <div style="border-left: 2px solid #EEE; height: 60px;"></div>
                     <div><div style="font-size: 1.2rem; color: #666;">남은 휴가</div><div style="font-size: 2.5rem; font-weight: 800; color: #2E7D32;">{remain}일</div></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        st.write("<br>", unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size: 1.4rem; font-weight: bold; color: #333; margin-bottom: 10px;">📉 휴가 잔여량 ({int(percent*100)}% 남음)</div>', unsafe_allow_html=True)
         st.progress(percent)
-        st.info(f"사용 가능한 휴가가 **{remain}일** 남아있습니다.")
     else:
-        st.warning("⚠️ 성함을 먼저 선택해 주세요.")
+        st.warning("⚠️ 성함을 먼저 선택해 주셔야 휴가 현황을 볼 수 있습니다.")
 
-st.caption("실버 복지 사업단 v5.4 | 위도·경도 표시 복구 완료")
-
+st.caption("실버 복지 사업단 v5.5 | 필수 선택 로직 강화")
