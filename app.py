@@ -8,32 +8,36 @@ from streamlit_js_eval import get_geolocation
 # --- 1. 페이지 기본 설정 ---
 st.set_page_config(page_title="스마트 근태관리 시스템", layout="wide")
 
-# --- 2. CSS 스타일링 (다우오피스 스타일 및 대형 UI 적용) ---
+# --- 2. CSS 스타일링 (대형 폰트 및 다우오피스 스타일) ---
 st.markdown("""
     <style>
     /* 전체 배경 및 폰트 */
     .main { background-color: #F9FAFB; }
-    .main-title { font-size: 36px; font-weight: bold; color: #1E3A8A; margin-bottom: 5px; }
-    .business-unit { font-size: 22px; color: #64748B; margin-bottom: 25px; }
+    .main-title { font-size: 38px !important; font-weight: bold; color: #1E3A8A; margin-bottom: 5px; }
+    .business-unit { font-size: 24px; color: #64748B; margin-bottom: 25px; }
     
     /* 박스형 디자인 */
     .status-box { background-color: #FFFFFF; padding: 25px; border-radius: 15px; text-align: center; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .time-text { font-size: 34px; font-weight: bold; color: #2563EB; }
-    .stat-label { font-size: 18px; color: #64748B; font-weight: 600; }
+    .time-text { font-size: 36px; font-weight: bold; color: #2563EB; }
+    .stat-label { font-size: 20px; color: #64748B; font-weight: 600; }
     
-    /* 성함 선택박스 크기 키우기 */
+    /* 안내 문구 대형화 */
+    .big-info-text { font-size: 26px !important; font-weight: bold; color: #1E40AF; margin-top: 15px; margin-bottom: 10px; }
+    .filter-info { font-size: 22px !important; color: #059669; font-weight: bold; padding: 10px 0; }
+    
+    /* 성함 선택박스 글자 크기 극대화 */
     div[data-baseweb="select"] > div {
-        font-size: 24px !important;
-        height: 65px !important;
+        font-size: 28px !important;
+        height: 75px !important;
         display: flex;
         align-items: center;
     }
     
     /* 버튼 폰트 크기 */
     .stButton>button {
-        font-size: 20px !important;
+        font-size: 22px !important;
         font-weight: bold !important;
-        padding: 10px 0px !important;
+        padding: 12px 0px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -76,7 +80,7 @@ if client:
 else:
     st.stop()
 
-# --- 4. 초성 추출 로직 ---
+# --- 4. 한글 초성 추출 로직 ---
 def get_chosung(text):
     CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
     if not text: return ""
@@ -88,7 +92,7 @@ def get_chosung(text):
 
 # --- 5. 상단 헤더 ---
 st.markdown('<div class="main-title">📊 근태현황</div>', unsafe_allow_html=True)
-st.markdown('<div class="business-unit">🏢 스마트경로당지원사업</div>', unsafe_allow_html=True)
+st.markdown('<div class="business-unit">🏢 실버 복지 사업단</div>', unsafe_allow_html=True)
 
 now = datetime.now()
 st.info(f"📅 **현재 정보:** {now.strftime('%Y년 %m월 %d일 %H:%M:%S')}")
@@ -96,14 +100,12 @@ st.info(f"📅 **현재 정보:** {now.strftime('%Y년 %m월 %d일 %H:%M:%S')}")
 st.divider()
 
 # --- 6. 본인 확인 (대형 박스형 초성 버튼) ---
-st.markdown('### 👤 본인 확인 (성씨 초성을 선택하세요)')
+st.markdown('<div class="big-info-text">👤 본인 확인 (성씨 초성을 선택하세요)</div>', unsafe_allow_html=True)
 cho_list = ["전체", "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"]
 
-# 세션 상태로 선택된 초성 관리
 if 'selected_cho' not in st.session_state:
     st.session_state.selected_cho = "전체"
 
-# 5열씩 버튼 배치
 rows = [cho_list[i:i + 5] for i in range(0, len(cho_list), 5)]
 for row in rows:
     cols = st.columns(5)
@@ -112,7 +114,8 @@ for row in rows:
             st.session_state.selected_cho = cho
             st.rerun()
 
-st.markdown(f"✅ 현재 **'{st.session_state.selected_cho}'** 필터가 적용 중입니다.")
+# 필터 적용 안내 문구 대형화
+st.markdown(f'<div class="filter-info">✅ 현재 \'{st.session_state.selected_cho}\' 필터가 적용 중입니다.</div>', unsafe_allow_html=True)
 
 # 이름 필터링 및 대형 선택창
 all_names = df_vacation['성함'].tolist() if not df_vacation.empty else []
@@ -121,11 +124,13 @@ if st.session_state.selected_cho == "전체":
 else:
     filtered_names = [name for name in all_names if get_chosung(name) == st.session_state.selected_cho]
 
-selected_user = st.selectbox("👇 아래에서 본인의 성함을 선택하세요", filtered_names if filtered_names else ["해당 없음"])
+# 성함 선택 안내 문구 대형화
+st.markdown('<div class="big-info-text">👇 아래에서 본인의 성함을 선택하세요</div>', unsafe_allow_html=True)
+selected_user = st.selectbox("", filtered_names if filtered_names else ["해당 없음"], label_visibility="collapsed")
 
 st.divider()
 
-# --- 7. GPS 및 출퇴근 (지도 포함) ---
+# --- 7. GPS 및 출퇴근 ---
 st.subheader("📍 위치 인증 및 출퇴근")
 loc = get_geolocation()
 col_map, col_btns = st.columns([2, 1])
@@ -145,15 +150,14 @@ with col_btns:
     st.write("")
     work_mode = st.selectbox("📝 업무 내용", ["행정지원", "현장관리", "상담업무", "생활지원", "기타"], key="work_mode")
     
-    # 출근 버튼
-    if st.button("🚀 출근하기", use_container_width=True, disabled=st.session_state.arrived or not loc):
+    gps_ready = True if loc else False
+    if st.button("🚀 출근하기", use_container_width=True, disabled=st.session_state.arrived or not gps_ready):
         st.session_state.arrived = True
         st.session_state.start_time = datetime.now().strftime("%H:%M")
         sheet_attendance.append_row([selected_user, now.strftime("%Y-%m-%d"), st.session_state.start_time, "", "출근", work_mode, lat, lon])
         st.success("✅ 출근 완료!")
         st.rerun()
 
-    # 퇴근 버튼
     if st.button("🏠 퇴근하기", use_container_width=True, disabled=not st.session_state.arrived):
         end_time = datetime.now().strftime("%H:%M")
         sheet_attendance.append_row([selected_user, now.strftime("%Y-%m-%d"), "", end_time, "퇴근", work_mode, "", ""])
@@ -164,7 +168,7 @@ with col_btns:
 
 st.divider()
 
-# --- 8. 연차 정보 섹션 ---
+# --- 8. 연차 정보 ---
 st.subheader("🏖️ 연차 사용 및 근로 정보")
 if not df_vacation.empty and selected_user in df_vacation['성함'].values:
     u_data = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
@@ -183,7 +187,6 @@ if not df_vacation.empty and selected_user in df_vacation['성함'].values:
     prog = min(used_v / total_v, 1.0) if total_v > 0 else 0.0
     st.write("📈 **연차 사용 현황**")
     st.progress(prog)
-    st.caption(f"🌴 현재 연차의 {int(prog*100)}%를 사용하였습니다.")
 
 if st.button("➕ 연차/휴가 신청하기"):
     @st.dialog("휴가 신청 팝업")
@@ -214,7 +217,7 @@ with col_noti:
     st.subheader("🔔 중요 공지")
     if not df_notice.empty:
         for _, n_row in df_notice.iterrows():
-            with st.expander(f"{n_row['날짜']} | {n_row['제목']}"):
+            with st.expander(f"{n_row['날짜']} | {n_row['제목']}") (expanded=True):
                 st.write(n_row['세부내용'])
 
-st.caption("스마트경로당지원 근태관리 시스템 v2.5")
+st.caption("실버 복지 사업단 근태관리 시스템 v2.6")
