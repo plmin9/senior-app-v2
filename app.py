@@ -22,7 +22,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] { gap: 10px; padding: 8px; background-color: #CFD8DC; border-radius: 15px; }
     .stTabs [data-baseweb="tab"] { 
         flex: 1; height: clamp(50px, 8vw, 80px); 
-        font-size: clamp(1rem, 3vw, 1.6rem) !important; font-weight: 900 !important; 
+        font-size: clamp(0.9rem, 2.5vw, 1.4rem) !important; font-weight: 900 !important; 
         border-radius: 12px !important; background-color: #ECEFF1; color: #455A64; 
     }
     .stTabs [aria-selected="true"] { background-color: #00838F !important; color: white !important; }
@@ -32,14 +32,12 @@ st.markdown("""
         font-size: clamp(1.2rem, 4vw, 1.8rem) !important; font-weight: 900 !important; 
     }
     
-    /* 현황판 디자인 */
     .dashboard-container {
         background: white; padding: 25px; border-radius: 25px; border: 4px solid #00838F;
         display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 15px;
     }
     .stat-item { text-align: center; flex: 1; min-width: 120px; }
     
-    /* 모바일에서 구분선 숨기기 */
     .divider { font-size: 2rem; color: #EEE; }
     @media (max-width: 600px) { .divider { display: none; } }
 
@@ -88,28 +86,27 @@ if 'arrived' not in st.session_state: st.session_state.arrived = False
 loc = get_geolocation()
 
 # --- 5. 메인 화면 ---
-st.markdown('<div class="main-title">스마트경로당지원 근태관리</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">🏢 스마트경로당 통합 관리 시스템</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="step-header">👤 성함 선택</div>', unsafe_allow_html=True)
-cho = st.radio("초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
-all_names = df_vacation['성함'].tolist() if not df_vacation.empty else []
-filtered_names = all_names if cho == "전체" else [n for n in all_names if get_chosung(n) == cho]
-selected_user = st.selectbox("성함 선택", ["성함을 선택해 주세요"] + filtered_names, label_visibility="collapsed")
+# 탭 구성 (관리자 모드 추가)
+tab_att, tab_vac, tab_admin = st.tabs(["🕒 출퇴근 체크", "🏖️ 내 휴가 확인", "👨‍🏫 관리자 모드"])
 
-st.markdown('<div class="step-header">📝 오늘 수행 업무</div>', unsafe_allow_html=True)
-work_options = ["경로당 청소", "배식 및 주방지원", "시설물 안전점검", "사무 업무 보조", "행사 지원", "기타 활동"]
-selected_works = st.multiselect("업무 선택", work_options, placeholder="업무를 골라주세요")
-work_detail = st.text_input("상세 내용", placeholder="상세 내용을 적어주세요")
-combined_work = f"[{', '.join(selected_works)}] {work_detail}".strip()
+# --- [사용자 전용] 출퇴근 탭 ---
+with tab_att:
+    st.markdown('<div class="step-header">👤 성함 선택</div>', unsafe_allow_html=True)
+    cho = st.radio("초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
+    all_names = df_vacation['성함'].tolist() if not df_vacation.empty else []
+    filtered_names = all_names if cho == "전체" else [n for n in all_names if get_chosung(n) == cho]
+    selected_user = st.selectbox("성함 선택", ["성함을 선택해 주세요"] + filtered_names, label_visibility="collapsed", key="user_select")
 
-is_user_selected = (selected_user != "성함을 선택해 주세요" and selected_user != "데이터 없음")
+    st.markdown('<div class="step-header">📝 오늘 수행 업무</div>', unsafe_allow_html=True)
+    work_options = ["경로당 청소", "배식 및 주방지원", "시설물 안전점검", "사무 업무 보조", "행사 지원", "기타 활동"]
+    selected_works = st.multiselect("업무 선택", work_options, placeholder="업무를 골라주세요")
+    work_detail = st.text_input("상세 내용", placeholder="상세 내용을 적어주세요")
+    combined_work = f"[{', '.join(selected_works)}] {work_detail}".strip()
 
-st.write("<br>", unsafe_allow_html=True)
+    is_user_selected = (selected_user != "성함을 선택해 주세요" and selected_user != "데이터 없음")
 
-# --- 6. 탭 구성 ---
-tab_attendance, tab_vacation = st.tabs(["🕒 출퇴근 체크", "🏖️ 휴가 확인"])
-
-with tab_attendance:
     if not is_user_selected:
         st.warning("⚠️ **성함을 먼저 선택**하셔야 버튼이 활성화됩니다.")
 
@@ -128,7 +125,6 @@ with tab_attendance:
     """, unsafe_allow_html=True)
     
     st.write("<br>", unsafe_allow_html=True)
-    
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         if st.button("출근하기", use_container_width=True, disabled=not is_user_selected or st.session_state.arrived or not loc):
@@ -163,17 +159,10 @@ with tab_attendance:
             st.map(df_map, zoom=16, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
         with m_col2:
-            st.markdown(f"""
-                <div class="loc-info">
-                    위도: <b>{loc['coords']['latitude']:.6f}</b><br>
-                    경도: <b>{loc['coords']['longitude']:.6f}</b><br><br>
-                    <small>지도에 점이 찍히면<br>정상적으로 인식된 것입니다.</small>
-                </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("📍 위치 신호를 기다리는 중...")
+            st.markdown(f"""<div class="loc-info">위도: <b>{loc['coords']['latitude']:.6f}</b><br>경도: <b>{loc['coords']['longitude']:.6f}</b><br><br><small>정상 수신 중</small></div>""", unsafe_allow_html=True)
 
-with tab_vacation:
+# --- [사용자 전용] 휴가 탭 ---
+with tab_vac:
     if is_user_selected:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         try:
@@ -182,23 +171,40 @@ with tab_vacation:
             remain_val = pd.to_numeric(u.get('잔여연차', 0), errors='coerce')
             remain = int(remain_val) if pd.notnull(remain_val) else (total - used)
         except: total, used, remain = 0, 0, 0
-        
         percent = (remain / total) if total > 0 else 0
-
-        st.markdown(f"""
-            <div style="background: white; padding: 30px; border-radius: 25px; border: 3px solid #E0E0E0; text-align: center;">
-                <div style="font-size: 1.8rem; font-weight: 800; color: #1B5E20; margin-bottom: 25px;">🏖️ {selected_user} 어르신 휴가 현황</div>
-                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px;">
-                    <div class="stat-item"><div style="color: #666;">전체 휴가</div><div style="font-size: 2rem; font-weight: 800;">{total}일</div></div>
-                    <div class="stat-item"><div style="color: #666;">사용한 휴가</div><div style="font-size: 2rem; font-weight: 800; color: #C62828;">{used}일</div></div>
-                    <div class="stat-item"><div style="color: #666;">남은 휴가</div><div style="font-size: 2rem; font-weight: 800; color: #2E7D32;">{remain}일</div></div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        st.write("<br>", unsafe_allow_html=True)
-        st.markdown(f"**📉 휴가 잔여량 ({int(percent*100)}%)**")
+        st.markdown(f"""<div style="background: white; padding: 30px; border-radius: 25px; border: 3px solid #E0E0E0; text-align: center;"><div style="font-size: 1.8rem; font-weight: 800; color: #1B5E20; margin-bottom: 25px;">🏖️ {selected_user} 어르신 휴가 현황</div><div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px;"><div class="stat-item"><div style="color: #666;">전체 휴가</div><div style="font-size: 2rem; font-weight: 800;">{total}일</div></div><div class="stat-item"><div style="color: #666;">사용한 휴가</div><div style="font-size: 2rem; font-weight: 800; color: #C62828;">{used}일</div></div><div class="stat-item"><div style="color: #666;">남은 휴가</div><div style="font-size: 2rem; font-weight: 800; color: #2E7D32;">{remain}일</div></div></div></div>""", unsafe_allow_html=True)
         st.progress(percent)
     else:
         st.warning("⚠️ 성함을 먼저 선택해 주세요.")
 
-st.caption("실버 복지 사업단 v5.7 | 에러 수정 및 안정화 버전")
+# --- [관리자 전용] 관리자 모드 탭 ---
+with tab_admin:
+    st.markdown('<div class="step-header">🔒 관리자 인증</div>', unsafe_allow_html=True)
+    pw = st.text_input("관리자 비밀번호를 입력하세요", type="password")
+    
+    if pw == "1234": # ⬅️ 비밀번호를 여기서 수정하세요
+        st.success("✅ 인증 성공! 전체 데이터를 확인합니다.")
+        
+        adm_tab1, adm_tab2 = st.tabs(["📅 오늘 출근 명단", "📊 전체 연차 현황"])
+        
+        with adm_tab1:
+            st.markdown("### 📋 오늘 출근자 명단")
+            try:
+                all_att = pd.DataFrame(sheet_attendance.get_all_records())
+                today = datetime.now().strftime("%Y-%m-%d")
+                df_today = all_att[all_att['날짜'] == today]
+                if not df_today.empty:
+                    st.dataframe(df_today, use_container_width=True)
+                else:
+                    st.info("아직 오늘 출근한 사람이 없습니다.")
+            except: st.error("데이터를 불러오는 데 실패했습니다.")
+            
+        with adm_tab2:
+            st.markdown("### 🏖️ 모든 직원 연차 잔여량")
+            st.dataframe(df_vacation, use_container_width=True)
+            st.bar_chart(df_vacation.set_index('성함')['잔여연차'])
+            
+    elif pw != "":
+        st.error("비밀번호가 틀렸습니다.")
+
+st.caption("실버 복지 사업단 v6.0 | 관리자 대시보드 탑재")
