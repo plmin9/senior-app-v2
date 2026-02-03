@@ -8,29 +8,30 @@ from streamlit_js_eval import get_geolocation
 # --- 1. 페이지 설정 ---
 st.set_page_config(page_title="스마트경로당지원 근태관리", layout="wide")
 
-# --- 2. 디자인 CSS (글자 크기 통일 핵심) ---
+# --- 2. 디자인 CSS (글자 크기 및 굵기 통일) ---
 st.markdown("""
     <style>
     .stApp { background-color: #F8F9FA; }
     
-    /* 1. 모든 주요 레이블의 폰트 크기를 '현재 위치 확인'과 동일하게 설정 (1.1rem) */
+    /* 1. 주요 안내 레이블 스타일 (1.1rem, 굵게) */
     .custom-label {
         font-size: 1.1rem !important;
-        font-weight: 600 !important;
+        font-weight: 800 !important; /* 더 굵게 조정 */
         color: #31333F;
         margin-bottom: 0.8rem;
         margin-top: 1rem;
     }
     
-    /* 2. 탭 메뉴(근태관리, 휴가관리) 글자 크기 조정 */
+    /* 2. 탭 메뉴(근태관리, 휴가관리) 글자 크기 및 굵기 강조 */
     .stTabs [data-baseweb="tab"] {
         font-size: 1.1rem !important;
-        font-weight: 600 !important;
+        font-weight: 800 !important; /* 굵게 설정 */
     }
-
-    /* 3. 라디오 버튼 및 기타 위젯 텍스트 크기 미세 조정 */
-    div[data-testid="stMarkdownContainer"] p {
-        font-size: 1.1rem;
+    
+    /* 선택된 탭의 강조 효과 */
+    .stTabs [aria-selected="true"] {
+        color: #1A73E8 !important;
+        border-bottom-color: #1A73E8 !important;
     }
 
     .time-card {
@@ -104,7 +105,7 @@ selected_user = st.selectbox("성함", filtered if filtered else ["데이터 없
 
 st.divider()
 
-# --- 6. 탭 구성 (글자 크기 조정됨) ---
+# --- 6. 탭 구성 (폰트 크기 및 굵기 적용 완료) ---
 tab_attendance, tab_vacation = st.tabs(["🕒 근태관리", "🏖️ 휴가관리"])
 
 with tab_attendance:
@@ -183,4 +184,4 @@ with tab_vacation:
                 st.rerun()
         apply_form()
 
-st.caption("실버 복지 사업단 v3.2 - 폰트 정합성 완료")
+st.caption("실버 복지 사업단 v3.3")
