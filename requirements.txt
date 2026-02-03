@@ -2,3 +2,5 @@ streamlit
 pandas
 st-gsheets-connection
 streamlit-js-eval
+gspread
+google-auth
