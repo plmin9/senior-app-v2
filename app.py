@@ -6,48 +6,57 @@ from datetime import datetime, timedelta
 from streamlit_js_eval import get_geolocation
 
 # --- 1. 페이지 설정 ---
-st.set_page_config(page_title="내 근태현황", layout="wide")
+st.set_page_config(page_title="근태/휴가 관리", layout="wide")
 
-# --- 2. 다우오피스 앱 스타일 CSS ---
+# --- 2. 상세 디자인 CSS (이미지 스타일 재현) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #F4F6F8; }
-    .header-title { font-size: 26px; font-weight: bold; color: #333; margin-bottom: 10px; }
+    .stApp { background-color: #F8F9FA; }
+    
+    /* 상단 탭 스타일 */
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; background-color: #F8F9FA; }
+    .stTabs [data-baseweb="tab"] { font-size: 20px; font-weight: bold; color: #888; }
+    .stTabs [aria-selected="true"] { color: #333 !important; border-bottom-color: #333 !important; }
+
+    /* 휴가 박스 스타일 */
+    .vacation-container { display: flex; gap: 10px; margin-bottom: 20px; }
+    .vacation-box {
+        flex: 1; background: white; padding: 20px; border-radius: 15px;
+        text-align: center; border: 1px solid #F0F0F0; box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    }
+    .vacation-box.active { background-color: #EBF5FF; border: 1px solid #C2E0FF; }
+    .v-label { font-size: 15px; color: #666; margin-bottom: 8px; }
+    .v-value { font-size: 22px; font-weight: bold; color: #333; }
+    .v-value.blue { color: #1A73E8; }
+
+    /* 캐릭터 프로그레스 바 영역 */
+    .char-progress-container {
+        background: white; padding: 20px; border-radius: 15px; 
+        margin-bottom: 30px; border: 1px solid #F0F0F0;
+    }
+    .char-msg-box {
+        background: #EBF5FF; padding: 10px 15px; border-radius: 10px;
+        font-size: 14px; color: #1A73E8; display: inline-block; margin-left: 10px;
+    }
+
+    /* 근태 카드 스타일 */
     .time-card {
-        background-color: #FFFFFF; padding: 30px; border-radius: 20px;
-        text-align: center; border: 1px solid #EEE;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px;
+        background: white; padding: 30px; border-radius: 20px;
+        text-align: center; border: 1px solid #EEE; margin-bottom: 20px;
     }
-    .time-display { font-size: 42px; font-weight: bold; color: #222; }
-    .time-arrow { font-size: 30px; color: #CCC; margin: 0 25px; }
-    .stat-container {
-        background-color: #FFFFFF; border-radius: 15px; padding: 15px;
-        margin-bottom: 15px; display: flex; justify-content: space-around; border: 1px solid #EEE;
-    }
-    .stat-item { text-align: center; }
-    .stat-label { font-size: 14px; color: #888; margin-bottom: 5px; }
-    .stat-value { font-size: 16px; font-weight: bold; color: #333; }
-    .calendar-row {
-        background-color: #FFFFFF; padding: 15px; border-radius: 15px;
-        display: flex; justify-content: space-between; margin-bottom: 20px; border: 1px solid #EEE;
-    }
-    .day-box { text-align: center; padding: 10px; width: 45px; border-radius: 12px; font-size: 14px; }
-    .day-today { background-color: #E8F0FE; color: #1A73E8; font-weight: bold; }
-    .big-info { font-size: 24px; font-weight: bold; color: #1E3A8A; margin: 20px 0 10px 0; }
-    
-    /* 성함 선택박스 대형화 */
-    div[data-baseweb="select"] > div { font-size: 24px !important; height: 70px !important; border-radius: 15px !important; }
-    
-    .nav-bar {
-        position: fixed; bottom: 0; left: 0; width: 100%;
-        background-color: #FFFFFF; padding: 12px 0;
-        display: flex; justify-content: space-around;
-        border-top: 1px solid #EEE; z-index: 1000;
+    .time-val { font-size: 38px; font-weight: bold; color: #222; }
+
+    /* 플로팅 버튼 스타일 대체 (Streamlit 버튼 커스텀) */
+    .stButton>button[kind="secondary"] {
+        background-color: #00BDD3 !important; color: white !important;
+        border-radius: 50% !important; width: 60px !important; height: 60px !important;
+        font-size: 30px !important; position: fixed; bottom: 80px; right: 30px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 1000;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 구글 시트 연결 및 데이터 정제 ---
+# --- 3. 구글 시트 연결 ---
 @st.cache_resource
 def get_gspread_client():
     try:
@@ -72,120 +81,117 @@ if client:
     df_vacation = pd.DataFrame(sheet_vacation.get_all_records())
 else: st.stop()
 
+# --- 4. 사용자 선택 로직 (초성 필터) ---
 def get_chosung(text):
     CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
-    if not text: return ""
-    first_char = str(text)[0]
-    if '가' <= first_char <= '힣':
-        return CHOSUNG_LIST[(ord(first_char) - 0xAC00) // 588]
-    return first_char.upper()
+    char_code = ord(str(text)[0]) - 0xAC00
+    return CHOSUNG_LIST[char_code // 588] if 0 <= char_code <= 11171 else str(text)[0].upper()
 
-# --- 4. 상단 레이아웃 ---
-st.markdown('<div class="header-title">내 근태현황</div>', unsafe_allow_html=True)
-now = datetime.now()
-st.write(f"📅 {now.strftime('%Y년 %m월 %d일 (%a)')}")
-
-# --- 5. 본인 확인 (초성 버튼 및 이름 선택) ---
-st.markdown('<div class="big-info">👤 본인 확인</div>', unsafe_allow_html=True)
-cho_list = ["전체", "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"]
-if 'selected_cho' not in st.session_state: st.session_state.selected_cho = "전체"
-
-cols = st.columns(5)
-for i, cho in enumerate(cho_list):
-    if cols[i % 5].button(cho, use_container_width=True, key=f"cho_{cho}"):
-        st.session_state.selected_cho = cho
-        st.rerun()
-
-all_names = df_vacation['성함'].tolist() if not df_vacation.empty else []
-filtered_names = all_names if st.session_state.selected_cho == "전체" else [n for n in all_names if get_chosung(n) == st.session_state.selected_cho]
-selected_user = st.selectbox("성함을 선택하세요", filtered_names if filtered_names else ["해당 없음"], label_visibility="collapsed")
+st.title("내 근태현황")
+cho = st.radio("성씨 초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True)
+names = df_vacation['성함'].tolist()
+filtered = names if cho == "전체" else [n for n in names if get_chosung(n) == cho]
+selected_user = st.selectbox("본인 성함을 선택하세요", filtered if filtered else ["없음"])
 
 st.divider()
 
-# --- 6. 출퇴근 시간 카드 ---
-if 'arrived' not in st.session_state: st.session_state.arrived = False
-if 'start_time' not in st.session_state: st.session_state.start_time = "-"
+# --- 5. 탭 구성 (근태 / 휴가) ---
+tab_attendance, tab_vacation = st.tabs(["근태", "휴가"])
 
-st.markdown(f"""
-    <div class="time-card">
-        <div style="display: flex; justify-content: center; align-items: center;">
-            <div>
-                <div style="color: #888; font-size: 14px;">출근 시간</div>
-                <div class="time-display">{st.session_state.start_time}</div>
-            </div>
-            <div class="time-arrow">➔</div>
-            <div>
-                <div style="color: #888; font-size: 14px;">퇴근 시간</div>
-                <div class="time-display">-</div>
+# --- [근태 탭] ---
+with tab_attendance:
+    now = datetime.now()
+    st.write(f"📅 {now.strftime('%Y-%m-%d (%a) %H:%M:%S')} 📍")
+    
+    # 출퇴근 카드
+    st.markdown(f"""
+        <div class="time-card">
+            <div style="display:flex; justify-content:center; align-items:center; gap:30px;">
+                <div><div style="color:#888;">출근 시간</div><div class="time-val">21:03:39</div></div>
+                <div style="font-size:30px; color:#EEE;">➔</div>
+                <div><div style="color:#888;">퇴근 시간</div><div class="time-val">-</div></div>
             </div>
         </div>
-    </div>
-""", unsafe_allow_html=True)
-
-loc = get_geolocation()
-c1, c2 = st.columns(2)
-with c1:
-    if st.button("🚀 출근하기", use_container_width=True, disabled=st.session_state.arrived or not loc):
-        st.session_state.arrived = True
-        st.session_state.start_time = datetime.now().strftime("%H:%M:%S")
-        sheet_attendance.append_row([selected_user, now.strftime("%Y-%m-%d"), st.session_state.start_time, "", "출근", "", loc['coords']['latitude'], loc['coords']['longitude']])
-        st.rerun()
-with c2:
-    if st.button("🏠 퇴근하기", use_container_width=True, disabled=not st.session_state.arrived):
-        st.session_state.arrived = False
-        st.session_state.start_time = "-"
-        st.success("오늘도 고생하셨습니다!")
-
-st.button("근무상태 변경 ∨", use_container_width=True)
-
-st.divider()
-
-# --- 7. 주간 통계 및 캘린더 ---
-st.subheader("이번 주 근태 요약")
-st.markdown("""
-    <div class="stat-container">
-        <div class="stat-item"><div class="stat-label">총 근로</div><div class="stat-value" style="color:#00C853;">0h 00m</div></div>
-        <div class="stat-item"><div class="stat-label">소정 근로</div><div class="stat-value">0h 00m</div></div>
-        <div class="stat-item"><div class="stat-label">초과 근로</div><div class="stat-value">0h 00m</div></div>
-        <div class="stat-item"><div class="stat-label">휴가</div><div class="stat-value">0h 00m</div></div>
-    </div>
-""", unsafe_allow_html=True)
-
-# 캘린더 (오늘 날짜 강조)
-days = ["월", "화", "수", "목", "금", "토", "일"]
-today_idx = now.weekday()
-calendar_html = '<div class="calendar-row">'
-for i, day in enumerate(days):
-    cls = "day-box day-today" if i == today_idx else "day-box"
-    calendar_html += f'<div class="{cls}">{day}</div>'
-calendar_html += '</div>'
-st.markdown(calendar_html, unsafe_allow_html=True)
-
-# --- 8. 연차 정보 (에러 방지 로직 강화) ---
-if not df_vacation.empty and selected_user in df_vacation['성함'].values:
-    u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
+    """, unsafe_allow_html=True)
     
-    # [핵심] 글자를 숫자로 변환하는 안전장치
-    def to_num(val):
-        try: return float(val)
-        except: return 0.0
+    col1, col2 = st.columns(2)
+    with col1: st.button("출근하기", use_container_width=True)
+    with col2: st.button("퇴근하기", use_container_width=True)
+    st.button("근무상태 변경 ∨", use_container_width=True)
+    
+    st.divider()
+    st.subheader("2026-02-02 ~ 2026-02-08")
+    st.image("https://img.icons8.com/color/96/calendar.png", width=50) # 예시 아이콘
+    st.write("전자결재 요청 내역 0")
 
-    v_total = to_num(u.get('총연차', 0))
-    v_used = to_num(u.get('사용연차', 0))
-    v_rem = to_num(u.get('잔여연차', 0))
+# --- [휴가 탭] ---
+with tab_vacation:
+    st.header("휴가")
+    st.write(f"{now.strftime('%Y년 %m월 %d일 (%a)')}")
+    
+    if selected_user in df_vacation['성함'].values:
+        u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
+        v_rem = u.get('잔여연차', 0)
+        v_used = u.get('사용연차', 0)
+        v_total = u.get('총연차', 0)
+        
+        # 1. 상단 3단 박스
+        st.markdown(f"""
+            <div class="vacation-container">
+                <div class="vacation-box active">
+                    <div style="font-size:30px;">🏖️</div>
+                    <div class="v-label">잔여 연차</div>
+                    <div class="v-value blue">{v_rem}d</div>
+                </div>
+                <div class="vacation-box">
+                    <div style="font-size:30px;">📅</div>
+                    <div class="v-label">사용 연차</div>
+                    <div class="v-value">{v_used}d</div>
+                </div>
+                <div class="vacation-box">
+                    <div style="font-size:30px;">✈️</div>
+                    <div class="v-label">총 연차</div>
+                    <div class="v-value">{v_total}d</div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # 2. 캐릭터 프로그레스 바
+        prog = min(v_used / v_total, 1.0) if v_total > 0 else 0.0
+        msg = "사용 가능한 연차가 충분합니다!" if v_rem > 0 else "사용 가능한 연차가 없습니다."
+        
+        st.markdown(f"""
+            <div class="char-progress-container">
+                <div style="display:flex; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:40px;">🐰</span>
+                    <div class="char-msg-box">{msg}</div>
+                </div>
+        """, unsafe_allow_html=True)
+        st.progress(prog)
+        st.markdown(f"<div style='text-align:right; color:#888;'>{int(prog*100)}% ({v_used} / {v_total})</div></div>", unsafe_allow_html=True)
 
-    st.markdown(f"🏝️ **잔여 연차: {int(v_rem)}일** / 사용: {int(v_used)}일")
-    prog = min(v_used / v_total, 1.0) if v_total > 0 else 0.0
-    st.progress(prog)
+    st.subheader("휴가 신청")
+    st.info("신청 내역 결과가 없습니다.")
 
-st.write("<br><br><br>", unsafe_allow_html=True)
+    # 3. 우측 하단 플로팅 신청 버튼 (+)
+    if st.button("+", key="apply_v"):
+        @st.dialog("휴가 신청")
+        def apply_form():
+            st.date_input("휴가 날짜")
+            st.selectbox("휴가 종류", ["연차", "반차", "경조사", "병가"])
+            st.text_area("사유")
+            if st.button("신청서 제출"):
+                st.success("신청되었습니다.")
+                st.rerun()
+        apply_form()
 
-# 하단 내비게이션 바
+# --- 하단 공통 네비게이션 바 ---
 st.markdown("""
-    <div class="nav-bar">
-        <div style="text-align:center; font-size:12px;">🏠<br>메뉴</div>
-        <div style="text-align:center; font-size:12px; color:#1A73E8; font-weight:bold;">📋<br>근태</div>
-        <div style="text-align:center; font-size:12px;">🏖️<br>휴가</div>
-        <div style="text-align:center; font-size:12px;">🔔<br>알림</div>
+    <div style="position:fixed; bottom:0; left:0; width:100%; background:white; display:flex; justify-content:space-around; padding:15px; border-top:1px solid #EEE; z-index:999;">
+        <div style="text-align:center; color:#888;">⠿<br><span style="font-size:10px;">메뉴</span></div>
+        <div style="text-align:center; color:#333; font-weight:bold;">📋<br><span style="font-size:10px;">근태</span></div>
+        <div style="text-align:center; color:#888;">🏖️<br><span style="font-size:10px;">휴가</span></div>
+        <div style="text-align:center; color:#888;">🔔<br><span style="font-size:10px;">알림</span></div>
     </div>
+    <div style="height:80px;"></div>
 """, unsafe_allow_html=True)
