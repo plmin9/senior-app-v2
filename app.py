@@ -10,13 +10,24 @@ SHEET_ID = "1y5XoW1L_fO7V7jW4eA7P-V7yvXo_U9C-V7yvXo_U9C" # 예시이므로 본�
 def get_gspread_client():
     try:
         if "gcp_service_account" in st.secrets:
-            # 설정값을 그대로 딕셔너리로 만듭니다.
-            key_info = dict(st.secrets["gcp_service_account"])
+            s = st.secrets["gcp_service_account"]
             
-            # 여기서 replace를 쓰면 오히려 에러가 날 수 있으니
-            # 문자열 양 끝의 불필요한 공백만 제거하고 바로 보냅니다.
-            key_info["private_key"] = key_info["private_key"].strip()
+            # [최종 방어] 문자열 내부의 \n 글자를 실제 줄바꿈 제어 문자로 교체
+            # 이 코드는 Secrets에 \n이 글자로 들어있을 때 가장 잘 작동합니다.
+            private_key = s["private_key"].replace("\\n", "\n")
             
+            key_info = {
+                "type": s["type"],
+                "project_id": s["project_id"],
+                "private_key_id": s["private_key_id"],
+                "private_key": private_key,
+                "client_email": s["client_email"],
+                "client_id": s["client_id"],
+                "auth_uri": s["auth_uri"],
+                "token_uri": s["token_uri"],
+                "auth_provider_x509_cert_url": s["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": s["client_x509_cert_url"]
+            }
             return gspread.service_account_from_dict(key_info)
         return None
     except Exception as e:
@@ -69,6 +80,7 @@ if client:
         st.error(f"데이터 연결 오류: {e}")
 else:
     st.error("구글 서비스 인증에 실패했습니다. Secrets 설정을 확인하세요.")
+
 
 
 
