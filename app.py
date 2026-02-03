@@ -1,63 +1,49 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import pandas as pd
-import datetime
-from streamlit_js_eval import get_geolocation
+import gspread
+from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="노인일자리 출퇴근 시스템", layout="centered")
-st.title("👵 노인일자리 출퇴근 시스템")
+def get_gspread_client():
+    try:
+        if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
+            s = st.secrets["connections"]["gsheets"]
+            
+            # [핵심 수리 로직] 
+            # 비밀키에서 '글자로 된 \n'을 '실제 줄바꿈'으로 바꾸고 앞뒤 공백을 완전히 제거
+            p_key = s["private_key"].replace("\\n", "\n").strip()
+            
+            # PEM 파일 형식(-----BEGIN...-----)이 깨졌는지 최종 확인 후 복구
+            if not p_key.startswith("-----BEGIN PRIVATE KEY-----"):
+                p_key = "-----BEGIN PRIVATE KEY-----\n" + p_key
+            if not p_key.endswith("-----END PRIVATE KEY-----"):
+                p_key = p_key + "\n-----END PRIVATE KEY-----"
 
-# 1. 시트 연결 (가장 에러 없는 방식)
-try:
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    
-    # 명단 가져오기 (첫 번째 시트)
-    # worksheet 이름을 정확히 기입하세요 (예: "명단" 또는 "Sheet1")
-    main_df = conn.read(worksheet="명단", ttl=0) 
-    names = main_df["성함"].unique()
-    
-    selected_name = st.selectbox("🙋 성함을 선택해주세요", names)
-    st.divider()
+            scopes = [
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+            
+            creds = Credentials.from_service_account_info({
+                "type": s["type"],
+                "project_id": s["project_id"],
+                "private_key_id": s["private_key_id"],
+                "private_key": p_key,
+                "client_email": s["client_email"],
+                "client_id": s["client_id"],
+                "auth_uri": s["auth_uri"],
+                "token_uri": s["token_uri"],
+                "auth_provider_x509_cert_url": s["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": s["client_x509_cert_url"]
+            }, scopes=scopes)
+            
+            return gspread.authorize(creds)
+        return None
+    except Exception as e:
+        st.error(f"⚠️ 인증 처리 중 상세 오류: {e}")
+        return None
 
-    # 위치 정보 가져오기
-    loc = get_geolocation()
-    
-    if loc:
-        st.success("📍 위치 확인 완료")
-        work_memo = st.text_input("오늘의 활동 내용 (예: 공원 청소)")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("🚀 출근하기", use_container_width=True):
-                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_row = pd.DataFrame([{
-                    "성함": selected_name, "시간": now, "구분": "출근",
-                    "위도": loc['coords']['latitude'], "경도": loc['coords']['longitude'],
-                    "메모": work_memo, "상태": "대기"
-                }])
-                # 데이터 추가
-                existing_logs = conn.read(worksheet="근태로그", ttl=0)
-                updated_logs = pd.concat([existing_logs, new_row], ignore_index=True)
-                conn.update(worksheet="근태로그", data=updated_logs)
-                st.balloons()
-                st.info(f"{selected_name}님, 출근 등록되었습니다!")
-
-        with col2:
-            if st.button("🏠 퇴근하기", use_container_width=True):
-                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_row = pd.DataFrame([{
-                    "성함": selected_name, "시간": now, "구분": "퇴근",
-                    "위도": loc['coords']['latitude'], "경도": loc['coords']['longitude'],
-                    "메모": work_memo, "상태": "대기"
-                }])
-                existing_logs = conn.read(worksheet="근태로그", ttl=0)
-                updated_logs = pd.concat([existing_logs, new_row], ignore_index=True)
-                conn.update(worksheet="근태로그", data=updated_logs)
-                st.warning(f"{selected_name}님, 퇴근 등록되었습니다!")
-    else:
-        st.info("좌측 상단의 위치 권한 허용을 눌러주세요.")
-
-except Exception as e:
-    st.error(f"데이터 연결 오류: {e}")
-    st.info("💡 Secrets 설정 형식이 'connections.gsheets'로 되어있는지 확인해주세요.")
+# 사용 예시
+client = get_gspread_client()
+if client:
+    # '근태로그'는 실제 구글 시트 파일 이름입니다.
+    doc = client.open("근태로그") 
+    st.success("데이터베이스 연결 성공!")
