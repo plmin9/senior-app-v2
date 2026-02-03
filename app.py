@@ -10,17 +10,20 @@ SHEET_ID = "1y5XoW1L_fO7V7jW4eA7P-V7yvXo_U9C-V7yvXo_U9C" # 예시이므로 본�
 def get_gspread_client():
     try:
         if "gcp_service_account" in st.secrets:
-            # Secrets를 딕셔너리로 변환하여 바로 사용
+            # Secrets 데이터를 딕셔너리로 복사
             key_info = dict(st.secrets["gcp_service_account"])
             
-            # 혹시 모르니 양 끝 공백만 제거
-            key_info["private_key"] = key_info["private_key"].strip()
+            # [수정 포인트] 문자열 '\n'을 실제 줄바꿈 문자로 변환
+            # 이 코드가 있어야 'Invalid JWT Signature' 에러를 막을 수 있습니다.
+            if "private_key" in key_info:
+                key_info["private_key"] = key_info["private_key"].replace("\\n", "\n")
             
             return gspread.service_account_from_dict(key_info)
         return None
     except Exception as e:
         st.error(f"⚠️ 인증 처리 중 상세 오류: {e}")
         return None
+        
 st.title("👵 노인일자리 출퇴근 시스템")
 
 # 시트 연결 시도
@@ -67,6 +70,7 @@ if client:
         st.error(f"데이터 연결 오류: {e}")
 else:
     st.error("구글 서비스 인증에 실패했습니다. Secrets 설정을 확인하세요.")
+
 
 
 
