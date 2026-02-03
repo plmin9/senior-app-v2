@@ -77,7 +77,7 @@ if 'arrived' not in st.session_state: st.session_state.arrived = False
 loc = get_geolocation()
 
 # --- 5. 메인 화면 ---
-st.markdown('<div class="main-title">🏢 어르신 일자리 근태관리</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title"> 스마트경로당지원 근태관리</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="step-header">👤 성함 찾기 (첫글자 선택)</div>', unsafe_allow_html=True)
 cho = st.radio("초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
@@ -110,7 +110,7 @@ with tab_attendance:
     
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("🚀 지금 출근하기", use_container_width=True, disabled=st.session_state.arrived or not loc):
+        if st.button("지금 출근하기", use_container_width=True, disabled=st.session_state.arrived or not loc):
             st.session_state.disp_start = datetime.now().strftime("%H:%M:%S")
             st.session_state.arrived = True
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
@@ -118,7 +118,7 @@ with tab_attendance:
             st.rerun()
             
     with col_btn2:
-        if st.button("🏠 지금 퇴근하기", use_container_width=True, disabled=not st.session_state.arrived or st.session_state.disp_end != "-"):
+        if st.button("지금 퇴근하기", use_container_width=True, disabled=not st.session_state.arrived or st.session_state.disp_end != "-"):
             st.session_state.disp_end = datetime.now().strftime("%H:%M:%S")
             try:
                 all_records = sheet_attendance.get_all_values()
@@ -194,3 +194,4 @@ with tab_vacation:
         st.warning("⚠️ 성함을 먼저 선택해 주세요.")
 
 st.caption("실버 복지 사업단 v5.4 | 위도·경도 표시 복구 완료")
+
