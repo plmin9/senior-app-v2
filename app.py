@@ -8,7 +8,7 @@ from streamlit_js_eval import get_geolocation
 # --- 1. 페이지 설정 ---
 st.set_page_config(page_title="근태/휴가 관리", layout="wide")
 
-# --- 2. 디자인 CSS (이미지 스타일 재현) ---
+# --- 2. 디자인 CSS (하단 바 제거 및 레이아웃 최적화) ---
 st.markdown("""
     <style>
     .stApp { background-color: #F8F9FA; }
@@ -45,13 +45,6 @@ st.markdown("""
         text-align: center; border: 1px solid #EEE; margin-bottom: 20px;
     }
     .time-val { font-size: 38px; font-weight: bold; color: #222; }
-
-    /* 하단 고정 메뉴바 스타일 */
-    .bottom-nav {
-        position: fixed; bottom: 0; left: 0; width: 100%; background: white; 
-        display: flex; justify-content: space-around; padding: 12px 0; 
-        border-top: 1px solid #EEE; z-index: 1000;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -80,7 +73,7 @@ if client:
     df_vacation = pd.DataFrame(sheet_vacation.get_all_records())
 else: st.stop()
 
-# 데이터 안전 변환 함수
+# 데이터 안전 변환 함수 (TypeError 방지)
 def to_num(val):
     try:
         if isinstance(val, str):
@@ -115,7 +108,6 @@ with tab_attendance:
     now = datetime.now()
     st.write(f"📅 {now.strftime('%Y-%m-%d (%a) %H:%M:%S')} 📍")
     
-    # 세션 상태 초기화
     if 'arrived' not in st.session_state: st.session_state.arrived = False
     if 'start_time' not in st.session_state: st.session_state.start_time = "-"
 
@@ -146,8 +138,8 @@ with tab_attendance:
 
     st.button("근무상태 변경 ∨", use_container_width=True)
     st.divider()
-    st.subheader(f"{now.strftime('%Y-%m-%d')} ~ {(now + timedelta(days=6)).strftime('%m-%d')}")
-    st.write("📋 전자결재 요청 내역 0")
+    st.subheader("전자결재 및 기록")
+    st.write("📋 최근 전자결재 요청 내역이 없습니다.")
 
 # --- [휴가 탭] ---
 with tab_vacation:
@@ -156,12 +148,11 @@ with tab_vacation:
     if not df_vacation.empty and selected_user in df_vacation['성함'].values:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         
-        # 에러 방지용 숫자 변환 처리
         v_total = to_num(u.get('총연차', 0))
         v_used = to_num(u.get('사용연차', 0))
         v_rem = to_num(u.get('잔여연차', 0))
         
-        # 1. 상단 3단 박스 레이아웃
+        # 1. 상단 3단 박스
         st.markdown(f"""
             <div class="vacation-container">
                 <div class="vacation-box active">
@@ -182,7 +173,7 @@ with tab_vacation:
             </div>
         """, unsafe_allow_html=True)
         
-        # 2. 캐릭터 프로그레스 바 영역
+        # 2. 캐릭터 프로그레스 바
         prog_ratio = min(v_used / v_total, 1.0) if v_total > 0 else 0.0
         msg = "사용 가능한 연차가 충분합니다!" if v_rem > 0 else "연차를 모두 사용하셨습니다."
         
@@ -196,7 +187,7 @@ with tab_vacation:
         st.progress(prog_ratio)
         st.markdown(f"<div style='text-align:right; color:#888; font-size:12px;'>{int(prog_ratio*100)}% ({int(v_used)} / {int(v_total)})</div></div>", unsafe_allow_html=True)
 
-    # 3. 휴가 신청 버튼 (이미지의 우측 하단 + 버튼 기능)
+    # 3. 휴가 신청 버튼
     if st.button("➕ 휴가 신청하기", use_container_width=True):
         @st.dialog("새 휴가 신청")
         def apply_form():
@@ -208,13 +199,4 @@ with tab_vacation:
                 st.rerun()
         apply_form()
 
-# --- 하단 공통 네비게이션 바 ---
-st.markdown("""
-    <div class="bottom-nav">
-        <div style="text-align:center; color:#888;"><span style="font-size:20px;">⠿</span><br><span style="font-size:10px;">메뉴</span></div>
-        <div style="text-align:center; color:#333; font-weight:bold;"><span style="font-size:20px;">📋</span><br><span style="font-size:10px;">근태</span></div>
-        <div style="text-align:center; color:#888;"><span style="font-size:20px;">🏖️</span><br><span style="font-size:10px;">휴가</span></div>
-        <div style="text-align:center; color:#888;"><span style="font-size:20px;">🔔</span><br><span style="font-size:10px;">알림</span></div>
-    </div>
-    <div style="height:80px;"></div>
-""", unsafe_allow_html=True)
+st.caption("실버 복지 사업단 v2.7 - 디자인 업데이트 완료")
