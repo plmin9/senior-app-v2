@@ -12,24 +12,15 @@ st.markdown("""
     <style>
     .stApp { background-color: #F0F4F8; } 
     .main-title { font-size: 2.5rem !important; font-weight: 900; color: #1B5E20; text-align: center; margin-bottom: 2rem; }
-    
-    /* 단계별 헤더 스타일 */
     .step-header {
         background-color: #FFFFFF; padding: 15px 20px; border-left: 10px solid #00838F;
         border-radius: 12px; font-size: 1.6rem !important; font-weight: 800 !important;
-        color: #004D40; margin-top: 25px; margin-bottom: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        color: #004D40; margin-top: 25px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
-
-    /* 탭 디자인 */
     .stTabs [data-baseweb="tab-list"] { gap: 20px; padding: 10px; background-color: #CFD8DC; border-radius: 20px; }
     .stTabs [data-baseweb="tab"] { flex: 1; height: 80px; font-size: 1.8rem !important; font-weight: 900 !important; border-radius: 15px !important; background-color: #ECEFF1; color: #455A64; }
     .stTabs [aria-selected="true"] { background-color: #00838F !important; color: white !important; box-shadow: 0 8px 15px rgba(0,131,143,0.3); }
-
-    /* 대형 버튼 */
     div.stButton > button { border-radius: 25px; height: 7rem !important; font-size: 2rem !important; font-weight: 900 !important; }
-    
-    /* 지도 박스 */
     .map-container { border: 6px solid #004D40; border-radius: 25px; overflow: hidden; }
     </style>
 """, unsafe_allow_html=True)
@@ -95,7 +86,7 @@ tab_attendance, tab_vacation = st.tabs(["🕒 오늘 출근·퇴근", "🏖️ �
 
 with tab_attendance:
     st.markdown(f"""
-        <div style="background: white; padding: 30px; border-radius: 30px; border: 5px solid #00838F; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
+        <div style="background: white; padding: 30px; border-radius: 30px; border: 5px solid #00838F; text-align: center; margin-bottom: 30px;">
             <div style="display:flex; justify-content:space-around; align-items:center;">
                 <div style="flex:1;"><div style="font-size:1.5rem; color:#555;">☀️ 출근 시각</div><div style="font-size:4rem; font-weight:900; color:#2E7D32;">{st.session_state.disp_start}</div></div>
                 <div style="font-size:4rem; color:#EEE;">|</div>
@@ -139,22 +130,24 @@ with tab_attendance:
         st.map(df_map, zoom=16, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 🏖️ 내 휴가 확인 탭 (데이터 보정 완료) ---
+# --- 🏖️ 내 휴가 확인 탭 (계산 보정 로직 추가) ---
 with tab_vacation:
     st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
     if not df_vacation.empty and selected_user in df_vacation['성함'].values:
         u = df_vacation[df_vacation['성함'] == selected_user].iloc[0]
         
-        # 데이터 안전하게 불러오기 (숫자 변환 처리)
+        # [수정] 시트에서 값을 가져오되 계산 로직을 더 견고하게 만듭니다.
         try:
-            total = pd.to_numeric(u.get('총연차', 0), errors='coerce')
-            used = pd.to_numeric(u.get('사용연차', 0), errors='coerce')
-            remain = pd.to_numeric(u.get('잔여연차', 0), errors='coerce')
+            total_raw = u.get('총연차', 0)
+            used_raw = u.get('사용연차', 0)
+            remain_raw = u.get('잔여연차', 0)
             
-            # NaN(숫자 아님) 값 방어
-            total = int(total) if pd.notnull(total) else 0
-            used = int(used) if pd.notnull(used) else 0
-            remain = int(remain) if pd.notnull(remain) else 0
+            # 숫자 형식으로 강제 변환
+            total = int(pd.to_numeric(total_raw, errors='coerce')) if pd.notnull(pd.to_numeric(total_raw, errors='coerce')) else 0
+            used = int(pd.to_numeric(used_raw, errors='coerce')) if pd.notnull(pd.to_numeric(used_raw, errors='coerce')) else 0
+            
+            # 만약 시트의 '잔여연차'가 비어있거나 계산이 틀렸다면 앱에서 직접 계산
+            remain = int(pd.to_numeric(remain_raw, errors='coerce')) if pd.notnull(pd.to_numeric(remain_raw, errors='coerce')) else (total - used)
         except:
             total, used, remain = 0, 0, 0
         
@@ -177,8 +170,8 @@ with tab_vacation:
         st.write("<br>", unsafe_allow_html=True)
         st.markdown(f'<div style="font-size: 1.4rem; font-weight: bold; color: #333; margin-bottom: 10px;">📉 휴가 잔여량 ({int(percent*100)}% 남음)</div>', unsafe_allow_html=True)
         st.progress(percent)
-        st.info(f"앞으로 사용할 수 있는 휴가가 **{remain}일** 더 남아있습니다.")
+        st.info(f"사용 가능한 휴가가 **{remain}일** 남아있습니다.")
     else:
-        st.warning("⚠️ 성함을 먼저 선택해 주시면 휴가 정보를 불러옵니다.")
+        st.warning("⚠️ 성함을 먼저 선택해 주세요.")
 
-st.caption("실버 복지 사업단 v5.2 | 휴가 데이터 보정 완료")
+st.caption("실버 복지 사업단 v5.3 | 연차 데이터 자동 계산 보정 적용")
