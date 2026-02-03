@@ -8,19 +8,31 @@ from streamlit_js_eval import get_geolocation
 # --- 1. 페이지 설정 ---
 st.set_page_config(page_title="스마트경로당지원 근태관리", layout="wide")
 
-# --- 2. 디자인 CSS (폰트 크기 및 스타일 조정) ---
+# --- 2. 디자인 CSS (글자 크기 통일 핵심) ---
 st.markdown("""
     <style>
     .stApp { background-color: #F8F9FA; }
     
-    /* 공통 폰트 설정 (현재 위치 확인 문구와 동일한 느낌) */
+    /* 1. 모든 주요 레이블의 폰트 크기를 '현재 위치 확인'과 동일하게 설정 (1.1rem) */
     .custom-label {
-        font-size: 1.1rem;
-        font-weight: 600;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
         color: #31333F;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
+        margin-top: 1rem;
     }
     
+    /* 2. 탭 메뉴(근태관리, 휴가관리) 글자 크기 조정 */
+    .stTabs [data-baseweb="tab"] {
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+    }
+
+    /* 3. 라디오 버튼 및 기타 위젯 텍스트 크기 미세 조정 */
+    div[data-testid="stMarkdownContainer"] p {
+        font-size: 1.1rem;
+    }
+
     .time-card {
         background: white; padding: 20px; border-radius: 15px;
         text-align: center; border: 1px solid #EEE; margin-bottom: 15px;
@@ -34,9 +46,6 @@ st.markdown("""
     }
     .gps-label { font-size: 14px; color: #666; font-weight: bold; margin-bottom: 5px; }
     .gps-value { font-size: 15px; color: #1A73E8; font-family: monospace; }
-    
-    /* 탭 폰트 크기 조정 */
-    .stTabs [data-baseweb="tab"] { font-size: 1.1rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -83,26 +92,26 @@ def get_chosung(text):
 # --- 5. 메인 화면 ---
 st.markdown("## 🏢 스마트경로당지원 근태관리")
 
-# 초성 선택 및 이름 선택 문구 크기 조정
+# 초성 선택
 st.markdown('<div class="custom-label">초성 선택</div>', unsafe_allow_html=True)
-cho = st.radio("초성 선택", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
+cho = st.radio("초성", ["전체", "ㄱ","ㄴ","ㄷ","ㄹ","ㅁ","ㅂ","ㅅ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"], horizontal=True, label_visibility="collapsed")
 
+# 성함 선택
 st.markdown('<div class="custom-label">본인 성함을 선택하세요</div>', unsafe_allow_html=True)
 names = df_vacation['성함'].tolist() if not df_vacation.empty else []
 filtered = names if cho == "전체" else [n for n in names if get_chosung(n) == cho]
-selected_user = st.selectbox("성함 선택", filtered if filtered else ["데이터 없음"], label_visibility="collapsed")
+selected_user = st.selectbox("성함", filtered if filtered else ["데이터 없음"], label_visibility="collapsed")
 
 st.divider()
 
-# --- 6. 탭 구성 ---
-# 탭 이름은 폰트 크기 조정을 위해 별도 스타일 적용
+# --- 6. 탭 구성 (글자 크기 조정됨) ---
 tab_attendance, tab_vacation = st.tabs(["🕒 근태관리", "🏖️ 휴가관리"])
 
 with tab_attendance:
     now = datetime.now()
     today_date = now.strftime("%Y-%m-%d")
     
-    # 날짜 시간 문구 크기 조정
+    # 날짜 시간 문구
     st.markdown(f'<div class="custom-label">📅 {now.strftime("%Y년 %m월 %d일 %H:%M")}</div>', unsafe_allow_html=True)
     
     # 출퇴근 시간 표시 카드
@@ -136,6 +145,7 @@ with tab_attendance:
 
     st.divider()
 
+    # 현재 위치 확인
     st.markdown('<div class="custom-label">📍 현재 위치 확인</div>', unsafe_allow_html=True)
     if loc:
         lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
@@ -173,4 +183,4 @@ with tab_vacation:
                 st.rerun()
         apply_form()
 
-st.caption("실버 복지 사업단 v3.1")
+st.caption("실버 복지 사업단 v3.2 - 폰트 정합성 완료")
