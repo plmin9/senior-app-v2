@@ -9,24 +9,18 @@ SHEET_ID = "1y5XoW1L_fO7V7jW4eA7P-V7yvXo_U9C-V7yvXo_U9C" # 예시이므로 본�
 
 def get_gspread_client():
     try:
-        import json
         if "gcp_service_account" in st.secrets:
-            # 뭉텅이로 저장된 json_data를 읽어옵니다.
-            key_data = st.secrets["gcp_service_account"]["json_data"]
+            # Secrets를 딕셔너리로 변환하여 바로 사용
+            key_info = dict(st.secrets["gcp_service_account"])
             
-            # 텍스트 내의 역슬래시가 깨지지 않도록 로직 강화
-            key_info = json.loads(key_data, strict=False)
-            
-            # 비밀키만 한 번 더 정제
-            if "private_key" in key_info:
-                key_info["private_key"] = key_info["private_key"].replace("\\n", "\n")
+            # 혹시 모르니 양 끝 공백만 제거
+            key_info["private_key"] = key_info["private_key"].strip()
             
             return gspread.service_account_from_dict(key_info)
         return None
     except Exception as e:
-        st.error(f"인증 처리 중 상세 오류: {e}")
+        st.error(f"⚠️ 인증 처리 중 상세 오류: {e}")
         return None
-
 st.title("👵 노인일자리 출퇴근 시스템")
 
 # 시트 연결 시도
@@ -73,5 +67,6 @@ if client:
         st.error(f"데이터 연결 오류: {e}")
 else:
     st.error("구글 서비스 인증에 실패했습니다. Secrets 설정을 확인하세요.")
+
 
 
